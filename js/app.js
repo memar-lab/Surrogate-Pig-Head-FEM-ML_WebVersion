@@ -390,7 +390,7 @@ $("download-zip").addEventListener("click", async () => {
     dir.file(`${id}_InputSettings.json`, JSON.stringify({
       simulationId: id, species: "Pig", inputType: cfg.inputType, direction: cfg.direction, modelType: cfg.modelType,
       peakAcceleration: cfg.peakAcceleration, peakVelocity: cfg.peakVelocity, inputFile: cfg.fileName,
-      features: res.features.byName, thresholds: { MPS95: MPS95_THRESHOLD, MAS95: MAS95_THRESHOLD },
+      thresholds: { MPS95: MPS95_THRESHOLD, MAS95: MAS95_THRESHOLD },
     }, null, 2));
     if (cfg.visual && state.viewers.MPS && state.viewers.MAS) {
       dir.file(`${id}_SpatialMPSPreview.png`, await spatialPNG("MPS"));

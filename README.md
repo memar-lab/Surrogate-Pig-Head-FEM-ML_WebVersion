@@ -69,7 +69,7 @@ Each simulation is saved as:
 <SimulationID>_SpatialMPS.csv           MPS for every brain element, with element centroids
 <SimulationID>_SpatialMAS.csv           MAS for every fibre, with fibre centroids
 <SimulationID>_VelocityTrace.csv        the angular velocity trace used
-<SimulationID>_InputSettings.json       input settings and the 15 extracted features
+<SimulationID>_InputSettings.json       input settings and thresholds
 <SimulationID>_SpatialMPSPreview.png    3D views (when Visual is ON)
 <SimulationID>_SpatialMASPreview.png
 <SimulationID>_RunResultsPage.png       summary page

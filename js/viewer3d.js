@@ -117,9 +117,13 @@ export class SpatialViewer {
     this.resize();
   }
 
-  resetView() {
+  defaultPose() {
     const dist = (this.radius / Math.sin((this.camera.fov * Math.PI) / 360)) * 1.05;
-    this.camera.position.set(this.center.x + dist, this.center.y, this.center.z);
+    return new THREE.Vector3(this.center.x + dist, this.center.y, this.center.z);
+  }
+
+  resetView() {
+    this.camera.position.copy(this.defaultPose());
     this.controls.target.copy(this.center);
     this.controls.update();
     this.render();
@@ -172,11 +176,22 @@ export class SpatialViewer {
     if (this.scene) this.render();
   }
 
-  /** Current view as a canvas element (for PNG export, always on a white background). */
+  /**
+   * Current view as a canvas element (for PNG export, always on a white background).
+   * Exports always use the default camera so MPS and MAS face the same way, whatever the user has rotated on screen.
+   */
   snapshot() {
+    const pos = this.camera.position.clone(), target = this.controls.target.clone();
+    this.camera.position.copy(this.defaultPose());
+    this.camera.lookAt(this.center);
     this.renderer.setClearColor(0xffffff, 1);
     this.render();
-    if (this.dark) requestAnimationFrame(() => this.setTheme(true)); // restore after the caller has copied the pixels
+    // restore the user's view once the caller has copied the pixels
+    requestAnimationFrame(() => {
+      this.camera.position.copy(pos);
+      this.camera.lookAt(target);
+      this.setTheme(this.dark);
+    });
     return this.renderer.domElement;
   }
 

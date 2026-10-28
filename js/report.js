@@ -1,6 +1,5 @@
 // Downloadable report of one run: a self-contained .html page, or a one-page A4 .pdf.
 // The PDF is written directly (no library): the page is drawn on a canvas, stored as a JPEG and wrapped in a minimal PDF.
-import { FEATURE_NAMES } from "./features.js";
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (v, d = 4) => Number(v).toFixed(d);
@@ -26,7 +25,6 @@ export function reportRows({ res, cfg }, thresholds) {
 
 export function buildReportHTML(info, thresholds, figureDataURL, notes) {
   const { settings, results, verdict } = reportRows(info, thresholds);
-  const vec = info.res.features.vector;
   const when = new Date().toLocaleString();
   const bad = results.some((r) => r[3]);
   return `<!doctype html>
@@ -56,9 +54,6 @@ ${results.map(([k, v, t, f]) => `<tr><td>${k}</td><td class="n">${v}</td><td cla
 ${notes ? `<div class="note">${esc(notes)}</div>` : ""}
 <h2>Results</h2>
 <img src="${figureDataURL}" alt="Dataset distribution, overall prediction, spatial MPS and spatial MAS">
-<h2>Extracted input features</h2>
-<table><tr><th>Feature</th><th>Value</th></tr>
-${FEATURE_NAMES.map((n, i) => `<tr><td>${esc(n)}</td><td class="n">${Number(vec[i]).toPrecision(8)}</td></tr>`).join("")}</table>
 <footer>Created with the FEM-ML Surrogate Model web tool (Memar Lab). MPS95 and MAS95 are the 95th percentile maximum principal strain and maximum axonal strain.</footer>
 </body></html>`;
 }
@@ -118,17 +113,6 @@ export function drawReportPage(info, thresholds, figureCanvas, notes) {
   const fw = W - 2 * M, fh = (figureCanvas.height / figureCanvas.width) * fw;
   ctx.drawImage(figureCanvas, M, y, fw, fh);
   ctx.strokeStyle = "#dde3ec"; ctx.lineWidth = 1.5; ctx.strokeRect(M, y, fw, fh);
-  y += fh + 44;
-
-  ctx.fillStyle = "#17202e"; ctx.font = font(700, 24); ctx.fillText("Extracted input features", M, y); y += 14;
-  const vec = info.res.features.vector, half = Math.ceil(FEATURE_NAMES.length / 2);
-  ctx.font = font(400, 18);
-  FEATURE_NAMES.forEach((n, i) => {
-    const col = i < half ? 0 : 1, row = i < half ? i : i - half;
-    const x = M + col * (W / 2 - M + 20), yy = y + 30 + row * 28;
-    ctx.fillStyle = "#5d6b7e"; ctx.textAlign = "left"; ctx.fillText(n, x, yy);
-    ctx.fillStyle = "#17202e"; ctx.textAlign = "right"; ctx.fillText(Number(vec[i]).toPrecision(8), x + W / 2 - M - 40, yy);
-  });
   ctx.textAlign = "left";
   ctx.fillStyle = "#5d6b7e"; ctx.font = font(400, 16);
   ctx.fillText("Created with the FEM-ML Surrogate Model web tool (Memar Lab).", M, H - 40);
