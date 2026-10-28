@@ -1,21 +1,30 @@
 // Small 3D pig brain (the MPS mesh) that shows the selected impact direction as a rotation arrow.
-// Frame used here: +X = front of the head, +Z = up, Y = lateral (right-handed).
+// Frame used here: +X toward the viewer, Y to the right, +Z up (right-handed).
 import * as THREE from "three";
 
 export const DIRECTION_TEXT = {
-  Axial: "Axial: the head rotates about the vertical axis, turning to the right.",
-  Sagittal: "Sagittal: the head rotates in the side plane, the front of the head moving to the top.",
-  Coronal: "Coronal: the head rotates in the front plane, tilting to the right side.",
+  Axial: "Axial: the head rotates about the vertical axis, from left to right.",
+  Sagittal: "Sagittal: the head rotates in the side plane, from bottom to top.",
+  Coronal: "Coronal: the head rotates in the front plane, tilting to the sides.",
 };
 
 const ORANGE = 0xd85a30;
 const RING_R = 3.7;
 
-/** Brain surface (the same mesh as the MPS view) as a geometry in the head frame: +X front, Y lateral, +Z up, radius ~3.2. */
+// Long (anterior-posterior) axis of the brain mesh, from its principal component. The picture is drawn looking down this axis.
+const AP = new THREE.Vector3(0.5666831, 0.8093131, -0.1545399);
+
+/** Brain surface (the same mesh as the MPS view) in the view frame: +X toward the viewer, Y to the viewer's right, +Z up; radius ~3.2. */
 function brainGeometry(brain) {
   const V = brain.arrays.V, tris = brain.arrays.tris;
+  const up = new THREE.Vector3(0, 0, 1).addScaledVector(AP, -AP.z).normalize();
+  const right = up.clone().cross(AP);
   const P = new Float32Array(V.length);
-  for (let i = 0; i < V.length; i += 3) { P[i] = V[i + 1]; P[i + 1] = -V[i]; P[i + 2] = V[i + 2]; } // mesh (x, y, z) -> (front = +y, lateral = -x, up = z)
+  for (let i = 0; i < V.length; i += 3) {
+    P[i] = V[i] * AP.x + V[i + 1] * AP.y + V[i + 2] * AP.z;
+    P[i + 1] = V[i] * right.x + V[i + 1] * right.y + V[i + 2] * right.z;
+    P[i + 2] = V[i] * up.x + V[i + 1] * up.y + V[i + 2] * up.z;
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(P, 3));
   g.setIndex(new THREE.BufferAttribute(Uint32Array.from(tris), 1));
@@ -37,7 +46,7 @@ export class DirectionView {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
     this.camera.up.set(0, 0, 1);
-    this.camera.position.set(5.6, -10.4, 4.6);
+    this.camera.position.set(13, -2, 2.4);
     this.camera.lookAt(0, 0, 0);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xb4b9c1, 1.5));
     const sun = new THREE.DirectionalLight(0xffffff, 1.1);
@@ -71,7 +80,7 @@ export class DirectionView {
     return group;
   }
 
-  /** Point at angle a on the ring whose plane is perpendicular to the given axis. a = 0 is +X (front) or +Z for the x-ring. */
+  /** Point at angle a on the ring whose plane is perpendicular to the given axis. a = 0 is +X (toward the viewer) or +Z for the x-ring. */
   pointOnRing(normal, a) {
     const c = Math.cos(a) * RING_R, s = Math.sin(a) * RING_R;
     if (normal === "z") return new THREE.Vector3(c, s, 0); // axial ring: horizontal
@@ -106,7 +115,7 @@ export class DirectionView {
     if (!spec) { this.render(); return; }
     this.camera.updateMatrixWorld();
     const sign = this.screenSign(spec.normal, spec.mid, spec.towards);
-    const half = 0.95; // radians either side of the centre
+    const half = name === "Coronal" ? 1.3 : 0.95; // radians either side of the centre
     const pts = [];
     for (let i = 0; i <= 48; i++) pts.push(this.pointOnRing(spec.normal, spec.mid + sign * (-half + (2 * half * i) / 48)));
     const tube = new THREE.Mesh(
