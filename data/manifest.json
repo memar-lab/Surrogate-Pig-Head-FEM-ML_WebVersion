@@ -1,0 +1,308 @@
+{
+ "models": {
+  "Overall_DNN_MAS_Axial": {
+   "family": "DNN",
+   "nComp": 1,
+   "bytes": 16008
+  },
+  "Overall_DNN_MAS_Coronal": {
+   "family": "DNN",
+   "nComp": 1,
+   "bytes": 18024
+  },
+  "Overall_DNN_MAS_Sagittal": {
+   "family": "DNN",
+   "nComp": 1,
+   "bytes": 6216
+  },
+  "Overall_DNN_MPS_Axial": {
+   "family": "DNN",
+   "nComp": 1,
+   "bytes": 15120
+  },
+  "Overall_DNN_MPS_Coronal": {
+   "family": "DNN",
+   "nComp": 1,
+   "bytes": 7848
+  },
+  "Overall_DNN_MPS_Sagittal": {
+   "family": "DNN",
+   "nComp": 1,
+   "bytes": 7224
+  },
+  "Overall_Lasso_MAS_Axial": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Lasso_MAS_Coronal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Lasso_MAS_Sagittal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Lasso_MPS_Axial": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Lasso_MPS_Coronal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Lasso_MPS_Sagittal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_RF_Curvature_MAS_Axial": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 813496
+  },
+  "Overall_RF_Curvature_MAS_Coronal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 462856
+  },
+  "Overall_RF_Curvature_MAS_Sagittal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 869600
+  },
+  "Overall_RF_Curvature_MPS_Axial": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 1135896
+  },
+  "Overall_RF_Curvature_MPS_Coronal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 713760
+  },
+  "Overall_RF_Curvature_MPS_Sagittal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 1204584
+  },
+  "Overall_RF_Linear_MAS_Axial": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 1109792
+  },
+  "Overall_RF_Linear_MAS_Coronal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 739656
+  },
+  "Overall_RF_Linear_MAS_Sagittal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 1125600
+  },
+  "Overall_RF_Linear_MPS_Axial": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 1126952
+  },
+  "Overall_RF_Linear_MPS_Coronal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 690824
+  },
+  "Overall_RF_Linear_MPS_Sagittal": {
+   "family": "RF",
+   "nComp": 1,
+   "bytes": 1120032
+  },
+  "Overall_Ridge_MAS_Axial": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Ridge_MAS_Coronal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Ridge_MAS_Sagittal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Ridge_MPS_Axial": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Ridge_MPS_Coronal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Overall_Ridge_MPS_Sagittal": {
+   "family": "Linear",
+   "nComp": 1,
+   "bytes": 4480
+  },
+  "Spatial_DNN_MAS_Axial": {
+   "family": "DNN",
+   "nComp": 4,
+   "bytes": 2944960
+  },
+  "Spatial_DNN_MAS_Coronal": {
+   "family": "DNN",
+   "nComp": 4,
+   "bytes": 2945600
+  },
+  "Spatial_DNN_MAS_Sagittal": {
+   "family": "DNN",
+   "nComp": 4,
+   "bytes": 2943808
+  },
+  "Spatial_DNN_MPS_Axial": {
+   "family": "DNN",
+   "nComp": 3,
+   "bytes": 432360
+  },
+  "Spatial_DNN_MPS_Coronal": {
+   "family": "DNN",
+   "nComp": 2,
+   "bytes": 323104
+  },
+  "Spatial_DNN_MPS_Sagittal": {
+   "family": "DNN",
+   "nComp": 3,
+   "bytes": 429000
+  },
+  "Spatial_Lasso_MAS_Axial": {
+   "family": "Linear",
+   "nComp": 4,
+   "bytes": 2941856
+  },
+  "Spatial_Lasso_MAS_Coronal": {
+   "family": "Linear",
+   "nComp": 4,
+   "bytes": 2941856
+  },
+  "Spatial_Lasso_MAS_Sagittal": {
+   "family": "Linear",
+   "nComp": 4,
+   "bytes": 2941856
+  },
+  "Spatial_Lasso_MPS_Axial": {
+   "family": "Linear",
+   "nComp": 3,
+   "bytes": 427000
+  },
+  "Spatial_Lasso_MPS_Coronal": {
+   "family": "Linear",
+   "nComp": 2,
+   "bytes": 321304
+  },
+  "Spatial_Lasso_MPS_Sagittal": {
+   "family": "Linear",
+   "nComp": 3,
+   "bytes": 427000
+  },
+  "Spatial_RF_Curvature_MAS_Axial": {
+   "family": "RF",
+   "nComp": 4,
+   "bytes": 4648744
+  },
+  "Spatial_RF_Curvature_MAS_Coronal": {
+   "family": "RF",
+   "nComp": 4,
+   "bytes": 5727384
+  },
+  "Spatial_RF_Curvature_MAS_Sagittal": {
+   "family": "RF",
+   "nComp": 4,
+   "bytes": 4642768
+  },
+  "Spatial_RF_Curvature_MPS_Axial": {
+   "family": "RF",
+   "nComp": 3,
+   "bytes": 2820088
+  },
+  "Spatial_RF_Curvature_MPS_Coronal": {
+   "family": "RF",
+   "nComp": 2,
+   "bytes": 1739448
+  },
+  "Spatial_RF_Curvature_MPS_Sagittal": {
+   "family": "RF",
+   "nComp": 3,
+   "bytes": 4122528
+  },
+  "Spatial_RF_Linear_MAS_Axial": {
+   "family": "RF",
+   "nComp": 4,
+   "bytes": 4306384
+  },
+  "Spatial_RF_Linear_MAS_Coronal": {
+   "family": "RF",
+   "nComp": 4,
+   "bytes": 5779176
+  },
+  "Spatial_RF_Linear_MAS_Sagittal": {
+   "family": "RF",
+   "nComp": 4,
+   "bytes": 5054400
+  },
+  "Spatial_RF_Linear_MPS_Axial": {
+   "family": "RF",
+   "nComp": 3,
+   "bytes": 1713368
+  },
+  "Spatial_RF_Linear_MPS_Coronal": {
+   "family": "RF",
+   "nComp": 2,
+   "bytes": 1702736
+  },
+  "Spatial_RF_Linear_MPS_Sagittal": {
+   "family": "RF",
+   "nComp": 3,
+   "bytes": 3065368
+  },
+  "Spatial_Ridge_MAS_Axial": {
+   "family": "Linear",
+   "nComp": 4,
+   "bytes": 2941856
+  },
+  "Spatial_Ridge_MAS_Coronal": {
+   "family": "Linear",
+   "nComp": 4,
+   "bytes": 2941856
+  },
+  "Spatial_Ridge_MAS_Sagittal": {
+   "family": "Linear",
+   "nComp": 4,
+   "bytes": 2941856
+  },
+  "Spatial_Ridge_MPS_Axial": {
+   "family": "Linear",
+   "nComp": 3,
+   "bytes": 427000
+  },
+  "Spatial_Ridge_MPS_Coronal": {
+   "family": "Linear",
+   "nComp": 2,
+   "bytes": 321304
+  },
+  "Spatial_Ridge_MPS_Sagittal": {
+   "family": "Linear",
+   "nComp": 3,
+   "bytes": 427000
+  }
+ },
+ "mesh": {
+  "elements": 13196,
+  "fibers": 73425
+ }
+}

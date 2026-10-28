@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FEM-ML Surrogate Model (Web)</title>
+  <meta name="description" content="Predict pig-head finite element brain strain (MPS95, MAS95, spatial MPS and MAS) from impact kinematics with trained machine-learning surrogates. Runs entirely in your browser.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230a66e6'/%3E%3Cpath d='M8 17c3-8 13-8 16 0' stroke='white' stroke-width='2.5' fill='none'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.min.js" } }
+  </script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <div>
+      <h1>FEM-ML Surrogate Model</h1>
+      <p>Pig head impact · runs entirely in your browser, no data is uploaded</p>
+    </div>
+  </div>
+  <nav class="steps" aria-label="Workflow">
+    <button class="step" data-page="species">1 · Species</button>
+    <button class="step" data-page="input">2 · Input Parameters</button>
+    <button class="step" data-page="run">3 · Run / Results</button>
+    <button class="step" data-page="batch">Batch</button>
+    <button class="step" data-page="about">About</button>
+  </nav>
+  <button id="restart" class="ghost" title="Clear all inputs and results">↻ Restart</button>
+</header>
+
+<main>
+  <!-- 1. Species -->
+  <section class="page" id="page-species">
+    <div class="card narrow">
+      <h2>Select Species</h2>
+      <p class="muted">Only the pig model is currently available.</p>
+      <div class="species-row">
+        <button id="species-pig" class="species selected" aria-pressed="true">Pig</button>
+        <button class="species" disabled title="Model not available">Human</button>
+        <button class="species" disabled title="Model not available">Rat</button>
+      </div>
+      <div class="actions"><button class="primary" id="to-input">Continue to Input Parameters</button></div>
+    </div>
+  </section>
+
+  <!-- 2. Input -->
+  <section class="page" id="page-input" hidden>
+    <div class="card">
+      <div class="card-head">
+        <button class="ghost" data-goto="species">‹ Back</button>
+        <span class="chip">Selected Species: Pig</span>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <label class="field">Simulation ID
+            <input id="sim-id" type="text" value="SIM_001" autocomplete="off" spellcheck="false">
+          </label>
+
+          <fieldset>
+            <legend>Impact Profile</legend>
+            <label class="radio"><input type="radio" name="itype" value="VelocityTrace" checked> Angular Velocity Trace</label>
+            <div class="sub" data-for="VelocityTrace">
+              <input type="file" id="file-vel" accept=".csv,text/csv">
+              <p class="hint">2 columns: <code>time_(s)</code>, <code>Angular_velocity_(rad/s)</code> · <a href="Templates/AngularVelocityTrace_Template.csv" download>template</a></p>
+            </div>
+            <label class="radio"><input type="radio" name="itype" value="AccelerationTrace"> Angular Acceleration Trace</label>
+            <div class="sub" data-for="AccelerationTrace" hidden>
+              <input type="file" id="file-acc" accept=".csv,text/csv">
+              <p class="hint">2 columns: <code>time_(s)</code>, <code>Angular_Acceleration_(rad/s2)</code> · <a href="Templates/AngularAccelerationTrace_Template.csv" download>template</a></p>
+            </div>
+            <label class="radio"><input type="radio" name="itype" value="PeakValues"> Peak Values (Idealized Sinusoidal Profile)</label>
+            <div class="sub" data-for="PeakValues" hidden>
+              <div class="inline">
+                <label class="field">Peak Accel. (rad/s²) <input id="peak-acc" type="number" min="0" step="any" value="150000"></label>
+                <label class="field">Peak Vel. (rad/s) <input id="peak-vel" type="number" min="0" step="any" value="100"></label>
+              </div>
+              <p class="hint">Or load a one-row file: <input type="file" id="file-peak" accept=".csv,text/csv"> · <a href="Templates/PeakValues_Template.csv" download>template</a></p>
+            </div>
+          </fieldset>
+
+          <div class="inline">
+            <label class="field">Impact Direction
+              <select id="direction">
+                <option>Axial</option>
+                <option selected>Sagittal</option>
+                <option>Coronal</option>
+                <option disabled>Multi-Direction (future)</option>
+              </select>
+            </label>
+            <label class="field">Pre-trained Model
+              <select id="model">
+                <option>DNN</option>
+                <option>Lasso</option>
+                <option>Ridge</option>
+                <option>Random Forest - Linear</option>
+                <option>Random Forest - Curvature</option>
+              </select>
+            </label>
+            <label class="field">Visual
+              <select id="visual">
+                <option value="ON">ON</option>
+                <option value="OFF">OFF (skip 3D previews)</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <div class="preview-head">
+            <h3>Velocity Trace Preview</h3>
+            <button id="gen-trace" class="secondary">Generate Trace</button>
+          </div>
+          <canvas id="trace-canvas" class="plot" height="280"></canvas>
+          <p id="trace-status" class="status muted">Select an input type, then Generate Trace.</p>
+          <p class="hint">Try it: <button class="link" id="load-example">load an example</button> (peak accel. 150,000 rad/s², peak vel. 100 rad/s).</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="reset-form" class="ghost">Reset</button>
+        <button id="run" class="primary">Run Prediction</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Run / Results -->
+  <section class="page" id="page-run" hidden>
+    <div class="card">
+      <div class="card-head">
+        <button class="ghost" data-goto="input">‹ Back</button>
+        <span class="chip" id="run-chip">No results yet</span>
+        <span class="spacer"></span>
+        <button id="reset-views" class="secondary">Reset View</button>
+        <button id="download-zip" class="primary">Download results (.zip)</button>
+      </div>
+      <div id="run-empty" class="empty">Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.</div>
+      <div id="run-body" hidden>
+        <div id="range-warning" class="warning" hidden></div>
+        <div class="quad">
+          <div class="panel"><h3>1. Dataset Distribution</h3><canvas id="dataset-canvas" class="plot" height="300"></canvas></div>
+          <div class="panel"><h3>2. Overall Prediction</h3><canvas id="overall-canvas" class="plot" height="300"></canvas></div>
+          <div class="panel"><h3>3. Spatial MPS Distribution</h3>
+            <div class="viewer-wrap"><div id="view-mps" class="viewer"></div><canvas id="bar-mps" class="cbar" width="70" height="260"></canvas></div>
+            <p class="status muted" id="msg-mps"></p>
+          </div>
+          <div class="panel"><h3>4. Spatial MAS Distribution</h3>
+            <div class="viewer-wrap"><div id="view-mas" class="viewer"></div><canvas id="bar-mas" class="cbar" width="70" height="260"></canvas></div>
+            <p class="status muted" id="msg-mas"></p>
+          </div>
+        </div>
+        <details class="features">
+          <summary>Extracted input features (15)</summary>
+          <table id="feature-table"></table>
+        </details>
+        <p class="hint">Drag to rotate · scroll to zoom · right-drag to pan. Colours: jet, MPS 0–0.5, MAS 0–0.15.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Batch -->
+  <section class="page" id="page-batch" hidden>
+    <div class="card">
+      <h2>Batch mode</h2>
+      <p class="muted">Run many CSV files at once. All files in one batch must use the same input type, direction and model. File names (without <code>.csv</code>) become the Simulation IDs; files with <code>template</code> in the name are skipped.</p>
+      <div class="inline">
+        <label class="field">Input Type
+          <select id="b-type">
+            <option value="VelocityTrace">VelocityTrace</option>
+            <option value="AccelerationTrace">AccelerationTrace</option>
+            <option value="PeakValues" selected>PeakValues</option>
+          </select>
+        </label>
+        <label class="field">Impact Direction
+          <select id="b-direction"><option>Axial</option><option selected>Sagittal</option><option>Coronal</option></select>
+        </label>
+        <label class="field">Model Architecture
+          <select id="b-model"><option>DNN</option><option>Lasso</option><option>Ridge</option><option>Random Forest - Linear</option><option>Random Forest - Curvature</option></select>
+        </label>
+      </div>
+      <div id="dropzone" class="dropzone" tabindex="0">
+        <p><b>Drop CSV files here</b>, or</p>
+        <input type="file" id="b-files" accept=".csv,text/csv" multiple>
+        <p class="hint">or <button class="link" id="b-example">use the 3 example files</button> · no folder? pick several files at once.</p>
+      </div>
+      <label class="check"><input type="checkbox" id="b-spatial" checked> Include spatial MPS / MAS CSVs (about 5 MB each per simulation; untick for a fast summary-only run)</label>
+      <div id="b-list" class="muted">No files selected.</div>
+      <div class="actions">
+        <button id="b-clear" class="ghost">Clear</button>
+        <button id="b-run" class="primary" disabled>Run batch</button>
+      </div>
+      <progress id="b-progress" value="0" max="1" hidden></progress>
+      <p id="b-status" class="status muted"></p>
+      <div id="b-results" hidden>
+        <table id="b-table"></table>
+        <div class="actions"><button id="b-download" class="primary">Download batch results (.zip)</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- About -->
+  <section class="page" id="page-about" hidden>
+    <div class="card prose">
+      <h2>About this tool</h2>
+      <p>This is the web version of the <a href="https://github.com/memar-lab/Surrogate-Pig-Head-FEM-ML">Surrogate Pig Head FEM-ML</a> desktop application. It predicts brain tissue response of a finite element pig-head model directly from head impact kinematics using pre-trained machine-learning surrogates.</p>
+      <img src="Workflow.png" alt="Workflow: impact input to feature extraction to surrogate model to overall and spatial outputs" class="workflow">
+      <h3>Outputs</h3>
+      <ul>
+        <li><b>MPS95</b>: 95th percentile maximum principal strain (injury threshold 0.30)</li>
+        <li><b>MAS95</b>: 95th percentile maximum axonal strain (injury threshold 0.13)</li>
+        <li><b>Spatial MPS</b>: strain for each of the 13,196 brain elements</li>
+        <li><b>Spatial MAS</b>: strain for each of the 73,425 axonal fibre beams</li>
+      </ul>
+      <p>An output is flagged when <code>value ≥ threshold</code>. The result is flagged as an injury-level response if either MPS95 or MAS95 is flagged.</p>
+      <h3>Input types</h3>
+      <ul>
+        <li><b>VelocityTrace</b>: CSV with <code>time_(s)</code>, <code>Angular_velocity_(rad/s)</code></li>
+        <li><b>AccelerationTrace</b>: CSV with <code>time_(s)</code>, <code>Angular_Acceleration_(rad/s2)</code>; integrated to velocity (trapezoid rule)</li>
+        <li><b>PeakValues</b>: peak acceleration (rad/s²) and peak velocity (rad/s); an idealized sinusoidal pulse of duration <code>T = π·ω<sub>peak</sub> / α<sub>peak</sub></code> is generated at dt = 10 µs plus 20 ms of rest</li>
+      </ul>
+      <h3>Scientific references</h3>
+      <ol>
+        <li>Hajiaghamemar, M., Wu, T., Panzer, M.B. and Margulies, S.S., 2020. <i>Embedded axonal fiber tracts improve finite element model predictions of traumatic brain injury.</i> Biomechanics and Modeling in Mechanobiology, 19(3), pp. 1109–1130.</li>
+        <li>Wu, T., Hajiaghamemar, M., Giudice, J.S., Alshareef, A., Margulies, S.S. and Panzer, M.B., 2021. <i>Evaluation of tissue-level brain injury metrics using species-specific simulations.</i> Journal of Neurotrauma, 38(13), pp. 1879–1888.</li>
+        <li>Hajiaghamemar, M. and Margulies, S.S., 2021. <i>Multi-scale white matter tract embedded brain finite element model predicts the location of traumatic diffuse axonal injury.</i> Journal of Neurotrauma, 38(1), pp. 144–157.</li>
+      </ol>
+      <h3>Privacy and accuracy</h3>
+      <p>All computation happens locally in your browser; your files are never uploaded. The numerical pipeline is a line-by-line port of the desktop application and is verified against its output (see <code>tests/parity.mjs</code>). Predictions are only meaningful inside the range of the training data; the app warns when an input lies outside it.</p>
+    </div>
+  </section>
+</main>
+
+<div id="busy" class="busy" hidden><div class="busy-box"><div class="spinner"></div><p id="busy-msg">Working…</p></div></div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script src="vendor/jszip.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
