@@ -46,7 +46,7 @@ export class DirectionView {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
     this.camera.up.set(0, 0, 1);
-    this.camera.position.set(13, -2, 2.4);
+    this.camera.position.set(15.4, -2.4, 2.8);
     this.camera.lookAt(0, 0, 0);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xb4b9c1, 1.5));
     const sun = new THREE.DirectionalLight(0xffffff, 1.1);

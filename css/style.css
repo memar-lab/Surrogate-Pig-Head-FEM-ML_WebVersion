@@ -269,3 +269,4 @@ progress { width: 100%; height: 10px; margin-top: 0.8rem; accent-color: var(--ac
 .dir-view { height: 230px; border: 1px solid var(--line); border-radius: 12px; background: var(--plot-bg); overflow: hidden; }
 .dir-view canvas { display: block; }
 .dir-panel .hint { margin-top: 0.4rem; }
+.dir-view { height: 250px; }

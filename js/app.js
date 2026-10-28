@@ -88,16 +88,13 @@ const inputType = () => document.querySelector('input[name="itype"]:checked').va
 function updateInputMode() {
   const t = inputType();
   $$(".sub").forEach((s) => (s.hidden = s.dataset.for !== t));
-  lastTrace = null;
-  redrawTrace();
-  setStatus($("trace-status"), "Select an input type, then Generate Trace.");
+  autoTrace();
 }
 $$('input[name="itype"]').forEach((r) => r.addEventListener("change", updateInputMode));
 
 async function readFileInto(input, key) {
   const f = input.files && input.files[0];
   loaded[key] = f ? { name: f.name, text: await f.text() } : null;
-  lastTrace = null;
   if (key === "PeakValues" && f) {
     try {
       const p = readPeakValuesCSV(loaded[key].text);
@@ -105,13 +102,14 @@ async function readFileInto(input, key) {
       $("peak-vel").value = p.peakVelocity;
     } catch (e) { toast(e.message, true); }
   }
+  autoTrace();
 }
 $("file-vel").addEventListener("change", (e) => readFileInto(e.target, "VelocityTrace"));
 $("file-acc").addEventListener("change", (e) => readFileInto(e.target, "AccelerationTrace"));
 $("file-peak").addEventListener("change", (e) => readFileInto(e.target, "PeakValues"));
 
-function getCfg() {
-  const simulationId = $("sim-id").value.trim();
+function getCfg(forTrace = false) {
+  const simulationId = $("sim-id").value.trim() || (forTrace ? "SIM" : "");
   if (!simulationId) throw new Error("Simulation ID is required.");
   const type = inputType();
   const cfg = {
@@ -141,7 +139,7 @@ function redrawTrace() {
   if (lastTrace) drawTrace(ctx, { x: 0, y: 0, w, h }, lastTrace);
   else {
     ctx.fillStyle = "#9aa3af"; ctx.font = "13px system-ui, sans-serif"; ctx.textAlign = "center";
-    ctx.fillText("No trace generated yet", w / 2, h / 2);
+    ctx.fillText("No trace to show yet", w / 2, h / 2);
   }
 }
 window.addEventListener("resize", () => { redrawTrace(); if (state.page === "run" && state.current) drawRunPlots(); });
@@ -162,27 +160,35 @@ let dirView = null;
 try { dirView = new DirectionView($("dir-view"), loadBrainMesh(fetchBuffer)); } catch (e) { console.warn("Direction picture unavailable:", e); }
 function updateDirectionPicture() {
   const d = $("direction").value;
-  $("dir-caption").textContent = DIRECTION_TEXT[d] || "";
+  $("dir-view").title = DIRECTION_TEXT[d] || "";
   if (dirView) dirView.ready.then(() => dirView.setDirection(d));
 }
 $("direction").addEventListener("change", updateDirectionPicture);
 updateDirectionPicture();
 
-function generateTrace() {
+/** Rebuild the velocity-trace preview from the current input (called whenever the input changes). */
+function autoTrace() {
+  const type = inputType();
+  if (type !== "PeakValues" && !loaded[type]) {
+    lastTrace = null;
+    redrawTrace();
+    setStatus($("trace-status"), "Choose an input file to preview the velocity trace.");
+    return;
+  }
   try {
-    const cfg = getCfg();
-    lastTrace = getVelocityTrace(cfg);
+    lastTrace = getVelocityTrace(getCfg(true));
     redrawTrace();
     let peak = 0;
     for (const v of lastTrace.y) peak = Math.max(peak, Math.abs(v));
-    setStatus($("trace-status"), `Trace generated. Peak velocity = ${peak.toFixed(3)} rad/s`, "ok");
+    setStatus($("trace-status"), `Peak velocity = ${peak.toFixed(3)} rad/s`, "ok");
   } catch (e) {
     lastTrace = null;
     redrawTrace();
     setStatus($("trace-status"), e.message, "err");
   }
 }
-$("gen-trace").addEventListener("click", generateTrace);
+let traceTimer = null;
+for (const id of ["peak-acc", "peak-vel"]) $(id).addEventListener("input", () => { clearTimeout(traceTimer); traceTimer = setTimeout(autoTrace, 350); });
 
 function resetForm() {
   $("sim-id").value = "SIM_001";
@@ -203,7 +209,6 @@ $("load-example").addEventListener("click", () => {
   $("peak-acc").value = 150000;
   $("peak-vel").value = 100;
   updateInputMode();
-  generateTrace();
 });
 
 // ---------------------------------------------------------------- single run
