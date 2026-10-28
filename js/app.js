@@ -1,5 +1,5 @@
 // UI controller: pages, single run, results, batch mode and downloads.
-import { getVelocityTrace, readPeakValuesCSV } from "./impactProfile.js";
+import { getVelocityTrace, readPeakValuesCSV, checkPeakRange } from "./impactProfile.js";
 import { ModelStore } from "./models.js";
 import {
   runSimulation, overallCSV, spatialCSV, traceCSV, loadCentroids, batchConfigFor, safeFolderName,
@@ -123,6 +123,7 @@ function getCfg() {
     if (a === "" || v === "") throw new Error("Peak acceleration and peak velocity are required.");
     cfg.peakAcceleration = Number(a);
     cfg.peakVelocity = Number(v);
+    checkPeakRange(cfg.peakAcceleration, cfg.peakVelocity);
   } else {
     const f = loaded[type];
     if (!f) throw new Error("No input file was selected.");

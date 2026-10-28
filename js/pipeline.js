@@ -1,5 +1,5 @@
 // Prediction pipeline (port of backend/prediction_export.py + batch_runner.py) without any DOM or file-system code.
-import { getVelocityTrace, readPeakValuesCSV } from "./impactProfile.js";
+import { getVelocityTrace, readPeakValuesCSV, checkPeakRange } from "./impactProfile.js";
 import { extractFeatures } from "./features.js";
 import { parseFEMB } from "./models.js";
 import { csvRow } from "./pyfmt.js";
@@ -82,7 +82,10 @@ export function traceCSV(trace) {
 export function batchConfigFor(file, inputType, direction, modelType) {
   const id = file.name.replace(/\.csv$/i, "");
   const cfg = { simulationId: id, inputType, direction, modelType };
-  if (inputType === "PeakValues") Object.assign(cfg, readPeakValuesCSV(file.text));
+  if (inputType === "PeakValues") {
+    Object.assign(cfg, readPeakValuesCSV(file.text));
+    checkPeakRange(cfg.peakAcceleration, cfg.peakVelocity);
+  }
   else cfg.text = file.text;
   return cfg;
 }

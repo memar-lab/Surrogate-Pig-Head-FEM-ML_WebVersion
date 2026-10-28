@@ -81,6 +81,7 @@ Batch mode also writes `_BatchSummaries/BatchSummary_<date>_<time>.csv` (one row
 
 - Predictions are only reliable inside the range of the training data. The app shows a caution banner when your peak velocity or acceleration is outside it.
 - Peak acceleration must be entered in rad/s², not krad/s².
+- Peak-value input is limited to the range of the training data: peak angular acceleration of at least 25,000 rad/s² and peak angular velocity of at least 50 rad/s. Lower values are rejected with an out-of-range error.
 
 ## Scientific references
 

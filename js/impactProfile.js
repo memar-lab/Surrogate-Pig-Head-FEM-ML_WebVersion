@@ -36,6 +36,18 @@ export function readPeakValuesCSV(text) {
   return { peakAcceleration: a[0], peakVelocity: v[0] };
 }
 
+// Lower limits of the training data for peak-value input (web version only; the surrogate is not valid below these).
+export const MIN_PEAK_ACCELERATION = 25000; // rad/s2
+export const MIN_PEAK_VELOCITY = 50; // rad/s
+
+export function checkPeakRange(peakAcceleration, peakVelocity) {
+  const a = Number(peakAcceleration), v = Number(peakVelocity);
+  const bad = [];
+  if (a < MIN_PEAK_ACCELERATION) bad.push(`peak angular acceleration ${a.toLocaleString()} rad/s² is below the minimum of ${MIN_PEAK_ACCELERATION.toLocaleString()} rad/s²`);
+  if (v < MIN_PEAK_VELOCITY) bad.push(`peak angular velocity ${v.toLocaleString()} rad/s is below the minimum of ${MIN_PEAK_VELOCITY} rad/s`);
+  if (bad.length) throw new Error(`Out of range: ${bad.join("; ")}.`);
+}
+
 /** np.spacing(x) for x > 0. */
 function spacing(x) {
   const dv = new DataView(new ArrayBuffer(8));
