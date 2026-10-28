@@ -123,6 +123,10 @@
               </select>
             </label>
           </div>
+          <div class="dir-panel">
+            <div id="dir-view" class="dir-view" role="img" aria-label="Pig brain with an arrow showing the selected impact direction"></div>
+            <p id="dir-caption" class="hint"></p>
+          </div>
         </div>
 
         <div>
@@ -151,6 +155,13 @@
         <span class="chip" id="run-chip">No results yet</span>
         <span class="spacer"></span>
         <button id="reset-views" class="secondary">Reset View</button>
+        <details class="menu" id="report-menu">
+          <summary class="secondary">Download report ▾</summary>
+          <div class="menu-list">
+            <button type="button" data-report="html">Web page (.html)</button>
+            <button type="button" data-report="pdf">PDF document (.pdf)</button>
+          </div>
+        </details>
         <button id="download-zip" class="primary">Download results (.zip)</button>
       </div>
       <div id="run-empty" class="empty">Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.</div>
@@ -168,10 +179,6 @@
             <p class="status muted" id="msg-mas"></p>
           </div>
         </div>
-        <details class="features">
-          <summary>Extracted input features (15)</summary>
-          <table id="feature-table"></table>
-        </details>
         <p class="hint">Drag to rotate · scroll to zoom · right-drag to pan. Colours: jet, MPS 0–0.5, MAS 0–0.15.</p>
       </div>
     </div>

@@ -41,6 +41,13 @@ export function loadMeshes(fetchBuffer) {
   return meshPromise;
 }
 
+let brainPromise = null;
+/** Brain surface only (for the direction picture), loaded once. */
+export function loadBrainMesh(fetchBuffer) {
+  if (!brainPromise) brainPromise = fetchBuffer("data/mesh/brain.bin").then(parseFEMB).catch((e) => { brainPromise = null; throw e; });
+  return brainPromise;
+}
+
 export class SpatialViewer {
   /**
    * @param {HTMLElement} host    element that will contain the canvas

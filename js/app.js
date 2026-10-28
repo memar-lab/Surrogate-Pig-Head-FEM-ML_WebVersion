@@ -6,8 +6,9 @@ import {
   BATCH_SUMMARY_HEADER, MPS95_THRESHOLD, MAS95_THRESHOLD,
 } from "./pipeline.js";
 import { csvRow } from "./pyfmt.js";
-import { FEATURE_NAMES } from "./features.js";
-import { SpatialViewer, loadMeshes, MPS_RANGE, MAS_RANGE } from "./viewer3d.js";
+import { DirectionView, DIRECTION_TEXT } from "./dirview.js";
+import { buildReportHTML, drawReportPage, pageCanvasToPDF } from "./report.js";
+import { SpatialViewer, loadMeshes, loadBrainMesh, MPS_RANGE, MAS_RANGE } from "./viewer3d.js";
 import { prepCanvas, drawTrace, drawDataset, drawOverall, drawColorbar, withLightTheme } from "./plots.js";
 
 const $ = (id) => document.getElementById(id);
@@ -66,7 +67,6 @@ const fmt6 = (v) => v.toFixed(6);
 
 // ---------------------------------------------------------------- navigation
 const state = { species: "Pig", current: null, viewers: {}, page: "species" };
-
 function show(page) {
   state.page = page;
   $$(".page").forEach((p) => (p.hidden = p.id !== `page-${page}`));
@@ -154,7 +154,19 @@ $("theme-toggle").addEventListener("click", () => {
   redrawTrace();
   if (state.current && !$("run-body").hidden) drawRunPlots();
   Object.values(state.viewers).forEach((v) => v.setTheme(next === "dark"));
+  if (dirView) dirView.setTheme(next === "dark");
 });
+
+// ---------------------------------------------------------------- impact-direction picture
+let dirView = null;
+try { dirView = new DirectionView($("dir-view"), loadBrainMesh(fetchBuffer)); } catch (e) { console.warn("Direction picture unavailable:", e); }
+function updateDirectionPicture() {
+  const d = $("direction").value;
+  $("dir-caption").textContent = DIRECTION_TEXT[d] || "";
+  if (dirView) dirView.ready.then(() => dirView.setDirection(d));
+}
+$("direction").addEventListener("change", updateDirectionPicture);
+updateDirectionPicture();
 
 function generateTrace() {
   try {
@@ -176,6 +188,7 @@ function resetForm() {
   $("sim-id").value = "SIM_001";
   document.querySelector('input[name="itype"][value="VelocityTrace"]').checked = true;
   $("direction").value = "Sagittal";
+  updateDirectionPicture();
   $("model").value = "DNN";
   $("visual").value = "ON";
   $("peak-acc").value = 150000;
@@ -248,17 +261,6 @@ function renderResults() {
 
   drawRunPlots();
 
-  // feature table
-  const tbl = $("feature-table");
-  tbl.innerHTML = "";
-  const head = tbl.insertRow();
-  for (const h of ["Feature", "Value"]) head.insertCell().outerHTML = `<th>${h}</th>`;
-  FEATURE_NAMES.forEach((name, i) => {
-    const r = tbl.insertRow();
-    r.insertCell().textContent = name;
-    const c = r.insertCell(); c.className = "num"; c.textContent = Number(res.features.vector[i]).toPrecision(8);
-  });
-
   // out-of-range caution (added in the web version; does not change any number)
   const f = res.features.byName, ds = cur.dataset;
   const lo = (a) => Math.min(...a), hi = (a) => Math.max(...a);
@@ -270,7 +272,8 @@ function renderResults() {
   if (res.overall.MPS95 < 0 || res.overall.MAS95 < 0) notes.push("a predicted strain is negative, which is not physical");
   const warn = $("range-warning");
   warn.hidden = notes.length === 0;
-  if (notes.length) warn.textContent = "Caution: the surrogate is only trained on its dataset, so this prediction is an extrapolation. " + notes.join("; ") + ".";
+  cur.notesText = notes.length ? "Caution: the surrogate is only trained on its dataset, so this prediction is an extrapolation. " + notes.join("; ") + "." : "";
+  if (notes.length) warn.textContent = cur.notesText;
 
   // 3D views
   for (const kind of ["MPS", "MAS"]) {
@@ -297,7 +300,8 @@ $("reset-views").addEventListener("click", () => Object.values(state.viewers).fo
 
 // PNG composites for the download
 const spatialPNG = (kind) => withLightTheme(() => spatialPNGLight(kind));
-const resultsPagePNG = () => withLightTheme(resultsPagePNGLight);
+const resultsPageCanvas = () => withLightTheme(resultsPageCanvasLight);
+const resultsPagePNG = async () => canvasBlob(resultsPageCanvas());
 
 function spatialPNGLight(kind) {
   const v = state.viewers[kind];
@@ -311,7 +315,7 @@ function spatialPNGLight(kind) {
   return canvasBlob(c);
 }
 
-function resultsPagePNGLight() {
+function resultsPageCanvasLight() {
   const { res, dataset } = state.current;
   const f = res.features.byName;
   const W = 1500, H = 1180, c = document.createElement("canvas");
@@ -336,8 +340,34 @@ function resultsPagePNGLight() {
     ctx.drawImage(src, x + 6, y + 28 + (area.h - src.height * s) / 2, src.width * s, src.height * s);
     drawColorbar(ctx, { x: x + cw - 78, y: y + 80, w: 16, h: ch - 160 }, kind === "MPS" ? MPS_RANGE : MAS_RANGE, kind);
   });
-  return canvasBlob(c);
+  return c;
 }
+
+// ---------------------------------------------------------------- report (.html / .pdf)
+const THRESHOLDS = { MPS95: MPS95_THRESHOLD, MAS95: MAS95_THRESHOLD };
+document.querySelectorAll("[data-report]").forEach((btn) => btn.addEventListener("click", async () => {
+  const cur = state.current;
+  btn.closest("details").open = false;
+  if (!cur) return;
+  const kind = btn.dataset.report;
+  try {
+    busy(`Building ${kind.toUpperCase()} report…`); await tick();
+    const figure = resultsPageCanvas();
+    const name = `${cur.res.folder}_Report`;
+    if (kind === "html") {
+      const html = buildReportHTML(cur, THRESHOLDS, figure.toDataURL("image/png"), cur.notesText);
+      download(new Blob([html], { type: "text/html" }), `${name}.html`);
+    } else {
+      const page = withLightTheme(() => drawReportPage(cur, THRESHOLDS, figure, cur.notesText));
+      download(await pageCanvasToPDF(page), `${name}.pdf`);
+    }
+    busy(null);
+  } catch (e) {
+    busy(null);
+    console.error(e);
+    toast(`Could not build report: ${e.message}`, true, 8000);
+  }
+}));
 
 $("download-zip").addEventListener("click", async () => {
   const cur = state.current;
