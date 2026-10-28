@@ -3,7 +3,28 @@
 import { jetCSS } from "./viewer3d.js";
 import { MPS95_THRESHOLD, MAS95_THRESHOLD } from "./pipeline.js";
 
-const INK = "#1f2933", MUTED = "#6b7280", GRID = "#e5e7eb";
+const LIGHT = {
+  ink: "#1f2933", muted: "#6b7280", grid: "#e5e7eb", axis: "#9ca3af", line: "#0a66e6",
+  dot: "rgba(140,146,156,0.65)", dotLegend: "rgba(140,146,156,0.9)", legendBg: "rgba(255,255,255,0.9)",
+  user: "#e11d1d", userEdge: "#500000", track: "#eceff3", marker: "#111827",
+  red: "#d92d20", green: "#12a150",
+  badBg: "#fee4e2", badInk: "#b42318", okBg: "#dcfae6", okInk: "#067647",
+};
+const DARK = {
+  ink: "#e6ebf2", muted: "#9aa7b8", grid: "#273449", axis: "#52627a", line: "#5eb0ff",
+  dot: "rgba(148,163,184,0.55)", dotLegend: "rgba(148,163,184,0.9)", legendBg: "rgba(15,23,42,0.88)",
+  user: "#ff4d6d", userEdge: "#ffffff", track: "#1c2a40", marker: "#e6ebf2",
+  red: "#f87171", green: "#34d399",
+  badBg: "rgba(248,113,113,0.16)", badInk: "#fca5a5", okBg: "rgba(52,211,153,0.16)", okInk: "#6ee7b7",
+};
+let forceLight = false;
+/** Palette for the current page theme (exports always use the light palette). */
+const pal = () => (!forceLight && document.documentElement.dataset.theme === "dark" ? DARK : LIGHT);
+/** Run fn (synchronous drawing) with the light palette, e.g. when building a PNG for download. */
+export function withLightTheme(fn) {
+  forceLight = true;
+  try { return fn(); } finally { forceLight = false; }
+}
 
 /** Size a canvas for the device pixel ratio and return a ctx in CSS pixels. */
 export function prepCanvas(canvas) {
@@ -41,9 +62,10 @@ function axes(ctx, r, xr, yr, xlabel, ylabel, title, grid = true) {
   const px = r.x + pad.l, py = r.y + pad.t, pw = r.w - pad.l - pad.r, ph = r.h - pad.t - pad.b;
   const X = (v) => px + ((v - xr[0]) / (xr[1] - xr[0])) * pw;
   const Y = (v) => py + ph - ((v - yr[0]) / (yr[1] - yr[0])) * ph;
+  const P = pal();
   ctx.save();
   ctx.font = "11px system-ui, sans-serif";
-  ctx.fillStyle = MUTED; ctx.strokeStyle = GRID; ctx.lineWidth = 1;
+  ctx.fillStyle = P.muted; ctx.strokeStyle = P.grid; ctx.lineWidth = 1;
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   for (const v of niceTicks(...xr)) {
     if (grid) { ctx.beginPath(); ctx.moveTo(X(v), py); ctx.lineTo(X(v), py + ph); ctx.stroke(); }
@@ -54,9 +76,9 @@ function axes(ctx, r, xr, yr, xlabel, ylabel, title, grid = true) {
     if (grid) { ctx.beginPath(); ctx.moveTo(px, Y(v)); ctx.lineTo(px + pw, Y(v)); ctx.stroke(); }
     ctx.fillText(fmtTick(v), px - 6, Y(v));
   }
-  ctx.strokeStyle = "#9ca3af";
+  ctx.strokeStyle = P.axis;
   ctx.strokeRect(px, py, pw, ph);
-  ctx.fillStyle = INK; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = P.ink; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
   ctx.fillText(xlabel, px + pw / 2, r.y + r.h - 6);
   ctx.save();
   ctx.translate(r.x + 13, py + ph / 2); ctx.rotate(-Math.PI / 2);
@@ -76,7 +98,7 @@ export function drawTrace(ctx, r, trace) {
   const a = axes(ctx, r, [t[0], t[t.length - 1]], [Math.min(0, ymin - padY), ymax + padY], "Time (s)", "Angular velocity (rad/s)", "Generated velocity trace");
   ctx.save();
   ctx.beginPath(); ctx.rect(a.px, a.py, a.pw, a.ph); ctx.clip();
-  ctx.strokeStyle = "#0a66e6"; ctx.lineWidth = 1.6; ctx.beginPath();
+  ctx.strokeStyle = pal().line; ctx.lineWidth = 1.6; ctx.beginPath();
   // decimate to ~2 points per pixel; keep min/max per bucket so peaks survive
   const buckets = Math.max(1, Math.floor(a.pw));
   if (t.length <= buckets * 2) {
@@ -100,19 +122,20 @@ export function drawDataset(ctx, r, dataset, user) {
   const ux = user.angVelMax, uy = user.angAccMax / 1000;
   const xmax = Math.max(...xs, ux) * 1.05, ymax = Math.max(...ys, uy) * 1.05;
   const a = axes(ctx, r, [0, xmax], [0, ymax], "Angular velocity (rad/s)", "Angular acceleration (Krad/s²)", "Input compared with training dataset", false);
+  const P = pal();
   ctx.save();
-  ctx.fillStyle = "rgba(140,146,156,0.65)";
+  ctx.fillStyle = P.dot;
   for (let i = 0; i < xs.length; i++) { ctx.beginPath(); ctx.arc(a.X(xs[i]), a.Y(ys[i]), 2.4, 0, 7); ctx.fill(); }
-  ctx.fillStyle = "#e11d1d"; ctx.strokeStyle = "#500000"; ctx.lineWidth = 1.5;
+  ctx.fillStyle = P.user; ctx.strokeStyle = P.userEdge; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(a.X(ux), a.Y(uy), 6, 0, 7); ctx.fill(); ctx.stroke();
   // legend
   ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
   const lx = a.px + a.pw - 118, ly = a.py + 10;
-  ctx.fillStyle = "rgba(255,255,255,0.9)"; ctx.fillRect(lx - 6, ly - 8, 122, 40);
-  ctx.fillStyle = "rgba(140,146,156,0.9)"; ctx.beginPath(); ctx.arc(lx + 4, ly + 2, 3, 0, 7); ctx.fill();
-  ctx.fillStyle = INK; ctx.fillText("Training dataset", lx + 14, ly + 2);
-  ctx.fillStyle = "#e11d1d"; ctx.beginPath(); ctx.arc(lx + 4, ly + 20, 4.5, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = INK; ctx.fillText("User input", lx + 14, ly + 20);
+  ctx.fillStyle = P.legendBg; ctx.fillRect(lx - 6, ly - 8, 122, 40);
+  ctx.fillStyle = P.dotLegend; ctx.beginPath(); ctx.arc(lx + 4, ly + 2, 3, 0, 7); ctx.fill();
+  ctx.fillStyle = P.ink; ctx.fillText("Training dataset", lx + 14, ly + 2);
+  ctx.fillStyle = P.user; ctx.beginPath(); ctx.arc(lx + 4, ly + 20, 4.5, 0, 7); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = P.ink; ctx.fillText("User input", lx + 14, ly + 20);
   ctx.restore();
 }
 
@@ -125,7 +148,7 @@ export function drawOverall(ctx, r, overall) {
   const left = r.x + 20, width = r.w - 40, barH = 26, rowH = 104, bannerH = 38;
   const total = rows.length * rowH + bannerH + 4;
   let y = r.y + Math.max(10, (r.h - total) / 2);
-  const RED = "#d92d20", GREEN = "#12a150";
+  const P = pal(), RED = P.red, GREEN = P.green, INK = P.ink, MUTED = P.muted;
   const X = (v) => left + width * Math.min(1, Math.max(0, v));
   const pill = (x, yy, w, h, rad) => { ctx.beginPath(); ctx.roundRect(x, yy, w, h, rad); };
   ctx.save();
@@ -142,13 +165,13 @@ export function drawOverall(ctx, r, overall) {
     ctx.fillText(value.toFixed(4), left + width, y + 18);
     // bar
     const by = y + 38;
-    ctx.fillStyle = "#eceff3"; pill(left, by, width, barH, barH / 2); ctx.fill();
+    ctx.fillStyle = P.track; pill(left, by, width, barH, barH / 2); ctx.fill();
     const fw = Math.max(barH, X(value) - left);
     if (value > 0) { ctx.fillStyle = col; pill(left, by, Math.min(fw, width), barH, barH / 2); ctx.fill(); }
     // threshold marker with its label above the bar
-    ctx.strokeStyle = "#111827"; ctx.lineWidth = 2; ctx.setLineDash([]);
+    ctx.strokeStyle = P.marker; ctx.lineWidth = 2; ctx.setLineDash([]);
     ctx.beginPath(); ctx.moveTo(X(thr), by - 5); ctx.lineTo(X(thr), by + barH + 5); ctx.stroke();
-    ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = "#111827";
+    ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = P.marker;
     const label = `Threshold ${thr.toFixed(2)}`;
     const lw = ctx.measureText(label).width;
     ctx.textAlign = "left";
@@ -162,9 +185,9 @@ export function drawOverall(ctx, r, overall) {
     y += rowH;
   }
   const flagged = overall.MPS95_InjuryFlag || overall.MAS95_InjuryFlag;
-  ctx.fillStyle = flagged ? "#fee4e2" : "#dcfae6";
+  ctx.fillStyle = flagged ? P.badBg : P.okBg;
   pill(left, y, width, bannerH, 10); ctx.fill();
-  ctx.fillStyle = flagged ? "#b42318" : "#067647"; ctx.font = "700 13px system-ui, sans-serif";
+  ctx.fillStyle = flagged ? P.badInk : P.okInk; ctx.font = "700 13px system-ui, sans-serif";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(flagged ? "Injury threshold exceeded: predicted injury-level response" : "No injury threshold exceeded", left + width / 2, y + bannerH / 2);
   ctx.restore();
@@ -174,10 +197,11 @@ export function drawOverall(ctx, r, overall) {
 export function drawColorbar(ctx, r, range, label) {
   const g = ctx.createLinearGradient(0, r.y + r.h, 0, r.y);
   for (let i = 0; i <= 20; i++) g.addColorStop(i / 20, jetCSS(i / 20));
+  const P = pal();
   ctx.save();
   ctx.fillStyle = g; ctx.fillRect(r.x, r.y, r.w, r.h);
-  ctx.strokeStyle = "#9ca3af"; ctx.strokeRect(r.x, r.y, r.w, r.h);
-  ctx.fillStyle = INK; ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+  ctx.strokeStyle = P.axis; ctx.strokeRect(r.x, r.y, r.w, r.h);
+  ctx.fillStyle = P.ink; ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
   for (const v of niceTicks(range[0], range[1], 5)) {
     const y = r.y + r.h - ((v - range[0]) / (range[1] - range[0])) * r.h;
     ctx.fillText(String(+v.toPrecision(3)), r.x + r.w + 5, y);

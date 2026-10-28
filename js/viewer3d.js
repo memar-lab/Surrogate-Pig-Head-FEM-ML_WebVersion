@@ -54,7 +54,7 @@ export class SpatialViewer {
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setClearColor(0xffffff, 1);
+    this.setTheme(document.documentElement.dataset.theme === "dark");
     host.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
@@ -159,9 +159,17 @@ export class SpatialViewer {
     this.renderer.render(this.scene, this.camera);
   }
 
-  /** Current view as a canvas element (for PNG export). */
+  setTheme(dark) {
+    this.dark = dark;
+    this.renderer.setClearColor(dark ? 0x0d1626 : 0xffffff, 1);
+    if (this.scene) this.render();
+  }
+
+  /** Current view as a canvas element (for PNG export, always on a white background). */
   snapshot() {
+    this.renderer.setClearColor(0xffffff, 1);
     this.render();
+    if (this.dark) requestAnimationFrame(() => this.setTheme(true)); // restore after the caller has copied the pixels
     return this.renderer.domElement;
   }
 

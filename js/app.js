@@ -8,7 +8,7 @@ import {
 import { csvRow } from "./pyfmt.js";
 import { FEATURE_NAMES } from "./features.js";
 import { SpatialViewer, loadMeshes, MPS_RANGE, MAS_RANGE } from "./viewer3d.js";
-import { prepCanvas, drawTrace, drawDataset, drawOverall, drawColorbar } from "./plots.js";
+import { prepCanvas, drawTrace, drawDataset, drawOverall, drawColorbar, withLightTheme } from "./plots.js";
 
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -145,6 +145,16 @@ function redrawTrace() {
   }
 }
 window.addEventListener("resize", () => { redrawTrace(); if (state.page === "run" && state.current) drawRunPlots(); });
+
+// ---------------------------------------------------------------- theme
+$("theme-toggle").addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("theme", next); } catch (e) { /* storage unavailable */ }
+  redrawTrace();
+  if (state.current && !$("run-body").hidden) drawRunPlots();
+  Object.values(state.viewers).forEach((v) => v.setTheme(next === "dark"));
+});
 
 function generateTrace() {
   try {
@@ -286,7 +296,10 @@ function renderResults() {
 $("reset-views").addEventListener("click", () => Object.values(state.viewers).forEach((v) => v.resetView()));
 
 // PNG composites for the download
-function spatialPNG(kind) {
+const spatialPNG = (kind) => withLightTheme(() => spatialPNGLight(kind));
+const resultsPagePNG = () => withLightTheme(resultsPagePNGLight);
+
+function spatialPNGLight(kind) {
   const v = state.viewers[kind];
   const W = 640, H = 560, c = document.createElement("canvas");
   c.width = W; c.height = H;
@@ -298,7 +311,7 @@ function spatialPNG(kind) {
   return canvasBlob(c);
 }
 
-function resultsPagePNG() {
+function resultsPagePNGLight() {
   const { res, dataset } = state.current;
   const f = res.features.byName;
   const W = 1500, H = 1180, c = document.createElement("canvas");
