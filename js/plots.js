@@ -8,7 +8,10 @@ const INK = "#1f2933", MUTED = "#6b7280", GRID = "#e5e7eb";
 /** Size a canvas for the device pixel ratio and return a ctx in CSS pixels. */
 export function prepCanvas(canvas) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const w = canvas.clientWidth || canvas.width, h = canvas.clientHeight || canvas.height;
+  // Fix the CSS height from the HTML attribute so resizing the bitmap never changes the layout.
+  if (!canvas.dataset.h) canvas.dataset.h = canvas.getAttribute("height") || "260";
+  canvas.style.height = canvas.dataset.h + "px";
+  const w = canvas.clientWidth || canvas.width, h = parseFloat(canvas.dataset.h);
   canvas.width = Math.round(w * dpr);
   canvas.height = Math.round(h * dpr);
   const ctx = canvas.getContext("2d");
@@ -33,7 +36,7 @@ function fmtTick(v) {
   return String(+v.toPrecision(4));
 }
 
-function axes(ctx, r, xr, yr, xlabel, ylabel, title) {
+function axes(ctx, r, xr, yr, xlabel, ylabel, title, grid = true) {
   const pad = { l: 52, r: 12, t: title ? 26 : 10, b: 40 };
   const px = r.x + pad.l, py = r.y + pad.t, pw = r.w - pad.l - pad.r, ph = r.h - pad.t - pad.b;
   const X = (v) => px + ((v - xr[0]) / (xr[1] - xr[0])) * pw;
@@ -43,12 +46,12 @@ function axes(ctx, r, xr, yr, xlabel, ylabel, title) {
   ctx.fillStyle = MUTED; ctx.strokeStyle = GRID; ctx.lineWidth = 1;
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   for (const v of niceTicks(...xr)) {
-    ctx.beginPath(); ctx.moveTo(X(v), py); ctx.lineTo(X(v), py + ph); ctx.stroke();
+    if (grid) { ctx.beginPath(); ctx.moveTo(X(v), py); ctx.lineTo(X(v), py + ph); ctx.stroke(); }
     ctx.fillText(fmtTick(v), X(v), py + ph + 4);
   }
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
   for (const v of niceTicks(...yr)) {
-    ctx.beginPath(); ctx.moveTo(px, Y(v)); ctx.lineTo(px + pw, Y(v)); ctx.stroke();
+    if (grid) { ctx.beginPath(); ctx.moveTo(px, Y(v)); ctx.lineTo(px + pw, Y(v)); ctx.stroke(); }
     ctx.fillText(fmtTick(v), px - 6, Y(v));
   }
   ctx.strokeStyle = "#9ca3af";
@@ -96,7 +99,7 @@ export function drawDataset(ctx, r, dataset, user) {
   const xs = dataset.angVelMax, ys = dataset.angAccMax.map((v) => v / 1000);
   const ux = user.angVelMax, uy = user.angAccMax / 1000;
   const xmax = Math.max(...xs, ux) * 1.05, ymax = Math.max(...ys, uy) * 1.05;
-  const a = axes(ctx, r, [0, xmax], [0, ymax], "Angular velocity (rad/s)", "Angular acceleration (Krad/s²)", "Input compared with training dataset");
+  const a = axes(ctx, r, [0, xmax], [0, ymax], "Angular velocity (rad/s)", "Angular acceleration (Krad/s²)", "Input compared with training dataset", false);
   ctx.save();
   ctx.fillStyle = "rgba(140,146,156,0.65)";
   for (let i = 0; i < xs.length; i++) { ctx.beginPath(); ctx.arc(a.X(xs[i]), a.Y(ys[i]), 2.4, 0, 7); ctx.fill(); }
@@ -113,38 +116,57 @@ export function drawDataset(ctx, r, dataset, user) {
   ctx.restore();
 }
 
-/** Horizontal bars for MPS95 / MAS95 against their thresholds. */
+/** MPS95 / MAS95 against their thresholds on a fixed 0-1 axis, plus an overall verdict. */
 export function drawOverall(ctx, r, overall) {
-  ctx.save();
-  // Same layout as the desktop app: fixed 0-1 axis, dashed threshold line, red/green bar.
   const rows = [
-    ["MPS95", overall.MPS95, MPS95_THRESHOLD],
-    ["MAS95", overall.MAS95, MAS95_THRESHOLD],
+    ["MPS95", "Max. principal strain", overall.MPS95, MPS95_THRESHOLD],
+    ["MAS95", "Max. axonal strain", overall.MAS95, MAS95_THRESHOLD],
   ];
-  const left = r.x + 16, width = r.w - 32;
-  let y = r.y + 14;
-  ctx.font = "600 12px system-ui, sans-serif"; ctx.textBaseline = "alphabetic";
-  for (const [name, value, thr] of rows) {
-    const flagged = value >= thr;
-    const X = (v) => left + width * Math.min(1, Math.max(0, v));
-    ctx.fillStyle = flagged ? "#e51a1a" : "#19a640"; ctx.textAlign = "left";
-    ctx.fillText(`${name}        Predicted: ${value.toFixed(4)}`, left, y);
-    y += 10;
-    ctx.fillStyle = "#ececec"; ctx.fillRect(left, y, width, 22);
-    ctx.fillStyle = flagged ? "#e51a1a" : "#19a640"; ctx.fillRect(left, y, X(value) - left, 22);
-    ctx.strokeStyle = "#555"; ctx.setLineDash([4, 3]); ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(X(thr), y - 6); ctx.lineTo(X(thr), y + 28); ctx.stroke(); ctx.setLineDash([]);
-    ctx.font = "11px system-ui, sans-serif"; ctx.fillStyle = MUTED; ctx.textAlign = "center";
-    for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) ctx.fillText(String(t), X(t), y + 42);
-    ctx.textAlign = "left"; ctx.fillStyle = INK;
-    ctx.fillText(`Threshold ${thr.toFixed(2)}`, X(thr) + 4, y - 8);
-    ctx.font = "600 12px system-ui, sans-serif";
-    y += 78;
+  const left = r.x + 20, width = r.w - 40, barH = 26, rowH = 104, bannerH = 38;
+  const total = rows.length * rowH + bannerH + 4;
+  let y = r.y + Math.max(10, (r.h - total) / 2);
+  const RED = "#d92d20", GREEN = "#12a150";
+  const X = (v) => left + width * Math.min(1, Math.max(0, v));
+  const pill = (x, yy, w, h, rad) => { ctx.beginPath(); ctx.roundRect(x, yy, w, h, rad); };
+  ctx.save();
+  ctx.textBaseline = "alphabetic";
+  for (const [name, sub, value, thr] of rows) {
+    const flagged = value >= thr, col = flagged ? RED : GREEN;
+    // title row: name + description on the left, predicted value on the right
+    ctx.textAlign = "left"; ctx.fillStyle = INK; ctx.font = "700 15px system-ui, sans-serif";
+    ctx.fillText(name, left, y + 14);
+    const nameW = ctx.measureText(name).width;
+    ctx.fillStyle = MUTED; ctx.font = "12px system-ui, sans-serif";
+    ctx.fillText(sub, left + nameW + 10, y + 14);
+    ctx.textAlign = "right"; ctx.fillStyle = col; ctx.font = "700 22px system-ui, sans-serif";
+    ctx.fillText(value.toFixed(4), left + width, y + 18);
+    // bar
+    const by = y + 38;
+    ctx.fillStyle = "#eceff3"; pill(left, by, width, barH, barH / 2); ctx.fill();
+    const fw = Math.max(barH, X(value) - left);
+    if (value > 0) { ctx.fillStyle = col; pill(left, by, Math.min(fw, width), barH, barH / 2); ctx.fill(); }
+    // threshold marker with its label above the bar
+    ctx.strokeStyle = "#111827"; ctx.lineWidth = 2; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(X(thr), by - 5); ctx.lineTo(X(thr), by + barH + 5); ctx.stroke();
+    ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = "#111827";
+    const label = `Threshold ${thr.toFixed(2)}`;
+    const lw = ctx.measureText(label).width;
+    ctx.textAlign = "left";
+    ctx.fillText(label, Math.min(Math.max(left, X(thr) - lw / 2), left + width - lw), by - 9);
+    // axis ticks
+    ctx.font = "11px system-ui, sans-serif"; ctx.fillStyle = MUTED;
+    for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
+      ctx.textAlign = t === 0 ? "left" : t === 1 ? "right" : "center";
+      ctx.fillText(String(t), X(t), by + barH + 20);
+    }
+    y += rowH;
   }
   const flagged = overall.MPS95_InjuryFlag || overall.MAS95_InjuryFlag;
-  ctx.textAlign = "left";
-  ctx.fillStyle = flagged ? "#c00000" : "#0a7a24";
-  ctx.fillText(flagged ? "Injury threshold exceeded: predicted injury-level response." : "No injury threshold exceeded.", left, y);
+  ctx.fillStyle = flagged ? "#fee4e2" : "#dcfae6";
+  pill(left, y, width, bannerH, 10); ctx.fill();
+  ctx.fillStyle = flagged ? "#b42318" : "#067647"; ctx.font = "700 13px system-ui, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(flagged ? "Injury threshold exceeded: predicted injury-level response" : "No injury threshold exceeded", left + width / 2, y + bannerH / 2);
   ctx.restore();
 }
 

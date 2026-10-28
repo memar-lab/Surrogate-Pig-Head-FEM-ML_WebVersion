@@ -314,7 +314,7 @@ function resultsPagePNG() {
     ctx.fillStyle = "#1f2933"; ctx.fillText(t, cells[i][0], cells[i][1] + 14);
     ctx.strokeStyle = "#e1e5ea"; ctx.strokeRect(cells[i][0], cells[i][1] + 24, cw, ch - 28);
   });
-  drawDataset(ctx, { x: cells[0][0], y: cells[0][1] + 24, w: cw, h: ch - 28 }, dataset, { angVelMax: f.ang_vel_max, angAccMax: f.ang_acc_max });
+  drawDataset(ctx, { x: cells[0][0], y: cells[0][1] + 24, w: cw, h: 360 }, dataset, { angVelMax: f.ang_vel_max, angAccMax: f.ang_acc_max });
   drawOverall(ctx, { x: cells[1][0], y: cells[1][1] + 40, w: cw, h: ch - 60 }, res.overall);
   [["MPS", cells[2]], ["MAS", cells[3]]].forEach(([kind, [x, y]]) => {
     const v = state.viewers[kind];
