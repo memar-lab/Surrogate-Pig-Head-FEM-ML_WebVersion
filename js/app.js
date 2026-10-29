@@ -299,6 +299,8 @@ function renderResults() {
       setStatus(msg, `Could not render ${kind} preview:\n${e.message}`, "err");
     }
   }
+  // rotating, zooming or panning one view moves the other the same way
+  if (state.viewers.MPS && state.viewers.MAS && !state.viewers.MPS.peer) state.viewers.MPS.link(state.viewers.MAS);
 }
 
 $("reset-views").addEventListener("click", () => Object.values(state.viewers).forEach((v) => v.resetView()));

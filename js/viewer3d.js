@@ -109,12 +109,31 @@ export class SpatialViewer {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.12;
-    this.controls.addEventListener("change", () => this.render());
+    this.controls.addEventListener("change", () => {
+      this.render();
+      if (this.peer && !this._applying) this.peer.applyView(this);
+    });
     this.resetView();
 
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
     this.resize();
+  }
+
+  /** Keep this view and another one at the same camera angle, zoom and pan. */
+  link(other) {
+    this.peer = other;
+    other.peer = this;
+    other.applyView(this);
+  }
+
+  applyView(src) {
+    this._applying = true;
+    this.camera.position.copy(src.camera.position);
+    this.controls.target.copy(src.controls.target);
+    this.controls.update();
+    this._applying = false;
+    this.render();
   }
 
   defaultPose() {
