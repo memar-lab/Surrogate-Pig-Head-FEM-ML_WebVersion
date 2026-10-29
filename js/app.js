@@ -299,9 +299,24 @@ function renderResults() {
       setStatus(msg, `Could not render ${kind} preview:\n${e.message}`, "err");
     }
   }
+  $("cut-panel").hidden = !cfg.visual;
+  applyCuts();
   // rotating, zooming or panning one view moves the other the same way
   if (state.viewers.MPS && state.viewers.MAS && !state.viewers.MPS.peer) state.viewers.MPS.link(state.viewers.MAS);
 }
+
+// ---------------------------------------------------------------- cut planes (shared by the MPS and MAS views)
+function applyCuts() {
+  for (const row of $$(".cut-row")) {
+    const axis = row.dataset.axis, on = row.querySelector(".cut-on").checked;
+    const t = Number(row.querySelector(".cut-slider").value) / 1000, flip = row.querySelector(".cut-flip").checked;
+    const v = Object.values(state.viewers)[0];
+    row.querySelector(".cut-slider").disabled = !on;
+    row.querySelector(".cut-val").textContent = v && on ? `${axis} = ${(v.bbox.min[axis] + (v.bbox.max[axis] - v.bbox.min[axis]) * t).toFixed(1)}` : "";
+    for (const viewer of Object.values(state.viewers)) viewer.setCut(axis, on, t, flip);
+  }
+}
+$$(".cut-row input").forEach((el) => el.addEventListener("input", applyCuts));
 
 $("reset-views").addEventListener("click", () => Object.values(state.viewers).forEach((v) => v.resetView()));
 

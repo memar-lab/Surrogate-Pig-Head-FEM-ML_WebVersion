@@ -168,6 +168,13 @@
         <div class="quad">
           <div class="panel"><h3>1. Dataset Distribution</h3><canvas id="dataset-canvas" class="plot" height="240"></canvas></div>
           <div class="panel"><h3>2. Overall Prediction</h3><canvas id="overall-canvas" class="plot" height="262"></canvas></div>
+          <div class="panel cut-panel" id="cut-panel">
+            <h3>Cut planes</h3>
+            <p class="hint">Tick one or more planes to slice both brains. The sliders move the cuts in both views at once.</p>
+            <div class="cut-row" data-axis="x"><label class="check"><input type="checkbox" class="cut-on"> X plane</label><input type="range" class="cut-slider" min="0" max="1000" value="500" aria-label="X plane position"><span class="cut-val muted"></span><label class="check"><input type="checkbox" class="cut-flip"> flip side</label></div>
+            <div class="cut-row" data-axis="y"><label class="check"><input type="checkbox" class="cut-on"> Y plane</label><input type="range" class="cut-slider" min="0" max="1000" value="500" aria-label="Y plane position"><span class="cut-val muted"></span><label class="check"><input type="checkbox" class="cut-flip"> flip side</label></div>
+            <div class="cut-row" data-axis="z"><label class="check"><input type="checkbox" class="cut-on"> Z plane</label><input type="range" class="cut-slider" min="0" max="1000" value="500" aria-label="Z plane position"><span class="cut-val muted"></span><label class="check"><input type="checkbox" class="cut-flip"> flip side</label></div>
+          </div>
           <div class="panel"><h3>3. Spatial MPS Distribution</h3>
             <div class="viewer-wrap"><div id="view-mps" class="viewer"></div><canvas id="bar-mps" class="cbar" width="70" height="260"></canvas></div>
             <p class="status muted" id="msg-mps"></p>

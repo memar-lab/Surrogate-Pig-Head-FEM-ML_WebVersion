@@ -60,6 +60,9 @@ export class SpatialViewer {
     this.range = kind === "MPS" ? MPS_RANGE : MAS_RANGE;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    this.renderer.localClippingEnabled = true;
+    this.materials = [];
+    this.cuts = { x: null, y: null, z: null }; // per axis: a THREE.Plane while that cut is active
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.setTheme(document.documentElement.dataset.theme === "dark");
     host.appendChild(this.renderer.domElement);
@@ -85,9 +88,13 @@ export class SpatialViewer {
     if (kind === "MPS") {
       this.colorAttr = new THREE.BufferAttribute(new Float32Array(nT * 9), 3);
       geo.setAttribute("color", this.colorAttr);
-      this.scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })));
+      const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
+      this.materials.push(mat);
+      this.scene.add(new THREE.Mesh(geo, mat));
     } else {
-      this.scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x999999, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false })));
+      const shell = new THREE.MeshBasicMaterial({ color: 0x999999, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false });
+      this.materials.push(shell);
+      this.scene.add(new THREE.Mesh(geo, shell));
       const { Vf, idx1, idx2 } = fibers.arrays;
       const nS = idx1.length;
       const lp = new Float32Array(nS * 6);
@@ -99,10 +106,14 @@ export class SpatialViewer {
       lg.setAttribute("position", new THREE.BufferAttribute(lp, 3));
       this.lineColors = new THREE.BufferAttribute(new Float32Array(nS * 6), 3);
       lg.setAttribute("color", this.lineColors);
-      this.scene.add(new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true })));
+      const lineMat = new THREE.LineBasicMaterial({ vertexColors: true });
+      this.materials.push(lineMat);
+      this.scene.add(new THREE.LineSegments(lg, lineMat));
     }
 
     geo.computeBoundingSphere();
+    geo.computeBoundingBox();
+    this.bbox = geo.boundingBox.clone();
     this.center = geo.boundingSphere.center.clone();
     this.radius = geo.boundingSphere.radius;
 
@@ -118,6 +129,23 @@ export class SpatialViewer {
     this.ro = new ResizeObserver(() => this.resize());
     this.ro.observe(host);
     this.resize();
+  }
+
+  /**
+   * Slice the model with a plane perpendicular to one data axis.
+   * @param {"x"|"y"|"z"} axis  @param {boolean} on  @param {number} t  position across the model, 0..1  @param {boolean} flip  keep the other side
+   */
+  setCut(axis, on, t = 0.5, flip = false) {
+    if (!on) this.cuts[axis] = null;
+    else {
+      const lo = this.bbox.min[axis], hi = this.bbox.max[axis], v = lo + (hi - lo) * t;
+      const n = new THREE.Vector3(axis === "x" ? 1 : 0, axis === "y" ? 1 : 0, axis === "z" ? 1 : 0);
+      // keep the side that is NOT cut away: coordinate <= v, or >= v when flipped
+      this.cuts[axis] = flip ? new THREE.Plane(n, -v) : new THREE.Plane(n.negate(), v);
+    }
+    const planes = Object.values(this.cuts).filter(Boolean);
+    for (const m of this.materials) { m.clippingPlanes = planes; m.needsUpdate = true; }
+    this.render();
   }
 
   /** Keep this view and another one at the same camera angle, zoom and pan. */

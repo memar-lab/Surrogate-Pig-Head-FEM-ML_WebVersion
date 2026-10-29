@@ -193,7 +193,12 @@ export function drawOverall(ctx, r, overall) {
   pill(left, y, width, bannerH, 10); ctx.fill();
   ctx.fillStyle = flagged ? P.badInk : P.okInk; ctx.font = "700 13px system-ui, sans-serif";
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(flagged ? "Injury threshold exceeded: predicted injury-level response" : "No injury threshold exceeded", left + width / 2, y + bannerH / 2);
+  // use the longest wording that fits the banner (phones are narrow)
+  const wording = flagged
+    ? ["Injury threshold exceeded: predicted injury-level response", "Injury threshold exceeded", "Threshold exceeded"]
+    : ["No injury threshold exceeded", "Below injury thresholds"];
+  const text = wording.find((t) => ctx.measureText(t).width <= width - 16) || wording[wording.length - 1];
+  ctx.fillText(text, left + width / 2, y + bannerH / 2);
   ctx.restore();
 }
 
