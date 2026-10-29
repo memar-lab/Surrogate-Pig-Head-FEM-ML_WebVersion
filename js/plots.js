@@ -57,8 +57,8 @@ function fmtTick(v) {
   return String(+v.toPrecision(4));
 }
 
-function axes(ctx, r, xr, yr, xlabel, ylabel, title, grid = true) {
-  const pad = { l: 52, r: 12, t: title ? 26 : 10, b: 40 };
+function axes(ctx, r, xr, yr, xlabel, ylabel, title, grid = true, topExtra = 0) {
+  const pad = { l: 52, r: 12, t: (title ? 26 : 10) + topExtra, b: 40 };
   const px = r.x + pad.l, py = r.y + pad.t, pw = r.w - pad.l - pad.r, ph = r.h - pad.t - pad.b;
   const X = (v) => px + ((v - xr[0]) / (xr[1] - xr[0])) * pw;
   const Y = (v) => py + ph - ((v - yr[0]) / (yr[1] - yr[0])) * ph;
@@ -121,21 +121,25 @@ export function drawDataset(ctx, r, dataset, user) {
   const xs = dataset.angVelMax, ys = dataset.angAccMax.map((v) => v / 1000);
   const ux = user.angVelMax, uy = user.angAccMax / 1000;
   const xmax = Math.max(...xs, ux) * 1.05, ymax = Math.max(...ys, uy) * 1.05;
-  const a = axes(ctx, r, [0, xmax], [0, ymax], "Angular velocity (rad/s)", "Angular acceleration (Krad/s²)", "Input compared with training dataset", false);
+  const a = axes(ctx, r, [0, xmax], [0, ymax], "Angular velocity (rad/s)", "Angular acceleration (Krad/s²)", "Input compared with training dataset", false, 24);
   const P = pal();
   ctx.save();
   ctx.fillStyle = P.dot;
   for (let i = 0; i < xs.length; i++) { ctx.beginPath(); ctx.arc(a.X(xs[i]), a.Y(ys[i]), 2.4, 0, 7); ctx.fill(); }
   ctx.fillStyle = P.user; ctx.strokeStyle = P.userEdge; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(a.X(ux), a.Y(uy), 6, 0, 7); ctx.fill(); ctx.stroke();
-  // legend
+  // legend: one row above the plot, centred
   ctx.font = "11px system-ui, sans-serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-  const lx = a.px + a.pw - 118, ly = a.py + 10;
-  ctx.fillStyle = P.legendBg; ctx.fillRect(lx - 6, ly - 8, 122, 40);
-  ctx.fillStyle = P.dotLegend; ctx.beginPath(); ctx.arc(lx + 4, ly + 2, 3, 0, 7); ctx.fill();
-  ctx.fillStyle = P.ink; ctx.fillText("Training dataset", lx + 14, ly + 2);
-  ctx.fillStyle = P.user; ctx.beginPath(); ctx.arc(lx + 4, ly + 20, 4.5, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = P.ink; ctx.fillText("User input", lx + 14, ly + 20);
+  const items = [["Training dataset", P.dotLegend, 3], ["User input", P.user, 4.5]];
+  const gap = 22, widths = items.map(([t]) => ctx.measureText(t).width + 16);
+  let lx = a.px + (a.pw - (widths[0] + widths[1] + gap)) / 2;
+  const ly = r.y + 40;
+  items.forEach(([text, color, rad], i) => {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx + 5, ly, rad, 0, 7); ctx.fill();
+    if (i === 1) ctx.stroke();
+    ctx.fillStyle = P.ink; ctx.fillText(text, lx + 16, ly);
+    lx += widths[i] + gap;
+  });
   ctx.restore();
 }
 

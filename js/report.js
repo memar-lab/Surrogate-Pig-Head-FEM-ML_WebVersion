@@ -44,7 +44,7 @@ export function buildReportHTML(info, thresholds, figureDataURL, notes) {
   footer{margin-top:2rem;color:#5d6b7e;font-size:.8rem}
   @media print{body{margin:0}h2{break-after:avoid}img{break-inside:avoid}}
 </style></head><body>
-<header><h1>FEM-ML Surrogate Model: Run Report</h1><div class="sub">Pig head impact · generated ${esc(when)}</div></header>
+<header><h1>Memar Lab Brain Injury Biomechanics Platform: Run Report</h1><div class="sub">Pig head impact · generated ${esc(when)}</div></header>
 <h2>Input settings</h2>
 <table>${settings.map(([k, v]) => `<tr><th style="width:30%">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>
 <h2>Overall prediction</h2>
@@ -54,7 +54,7 @@ ${results.map(([k, v, t, f]) => `<tr><td>${k}</td><td class="n">${v}</td><td cla
 ${notes ? `<div class="note">${esc(notes)}</div>` : ""}
 <h2>Results</h2>
 <img src="${figureDataURL}" alt="Dataset distribution, overall prediction, spatial MPS and spatial MAS">
-<footer>Created with the FEM-ML Surrogate Model web tool (Memar Lab). MPS95 and MAS95 are the 95th percentile maximum principal strain and maximum axonal strain.</footer>
+<footer>Created with the Memar Lab Brain Injury Biomechanics Platform. MPS95 and MAS95 are the 95th percentile maximum principal strain and maximum axonal strain.</footer>
 </body></html>`;
 }
 
@@ -69,7 +69,7 @@ export function drawReportPage(info, thresholds, figureCanvas, notes) {
   ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = "#1d5fd1"; ctx.fillRect(0, 0, W, 12);
   ctx.textBaseline = "alphabetic"; ctx.textAlign = "left";
-  ctx.fillStyle = "#17202e"; ctx.font = font(700, 40); ctx.fillText("FEM-ML Surrogate Model: Run Report", M, 80);
+  ctx.fillStyle = "#17202e"; ctx.font = font(700, 32); ctx.fillText("Memar Lab Brain Injury Biomechanics Platform: Run Report", M, 80);
   ctx.fillStyle = "#5d6b7e"; ctx.font = font(400, 20); ctx.fillText(`Pig head impact · generated ${new Date().toLocaleString()}`, M, 112);
 
   let y = 160;
@@ -115,7 +115,7 @@ export function drawReportPage(info, thresholds, figureCanvas, notes) {
   ctx.strokeStyle = "#dde3ec"; ctx.lineWidth = 1.5; ctx.strokeRect(M, y, fw, fh);
   ctx.textAlign = "left";
   ctx.fillStyle = "#5d6b7e"; ctx.font = font(400, 16);
-  ctx.fillText("Created with the FEM-ML Surrogate Model web tool (Memar Lab).", M, H - 40);
+  ctx.fillText("Created with the Memar Lab Brain Injury Biomechanics Platform.", M, H - 40);
   return c;
 }
 
