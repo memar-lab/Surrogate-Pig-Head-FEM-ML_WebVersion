@@ -162,6 +162,19 @@ def export_meshes(src_dir, out_dir):
     Vf_all = np.asarray(fiber["Vf"], dtype=np.float64)
     Vfc = (np.asarray(fiber["V"], dtype=np.float64).min(0) + np.asarray(fiber["V"], dtype=np.float64).max(0)) / 2.0
     assert np.allclose(Vc, Vfc)
+    # Interior elements. The mesh is 38 layers of height 2 along z; in-plane the cells are irregular, so each element is drawn as a
+    # box of height 2 and a width taken from the spacing to its nearest neighbour in the same layer. Boxes are placed at the
+    # element centroids in the rotated display frame and oriented by the same rotation (see meta.rot).
+    cent = np.asarray(np.load(os.path.join(src_dir, "ElementCentroids.npz"))["centroids"], dtype=np.float64)
+    nn = np.empty(len(cent))
+    for s0 in range(0, len(cent), 400):
+        P = cent[s0:s0 + 400]
+        D = np.linalg.norm(P[:, None, :2] - cent[None, :, :2], axis=2)
+        D = np.where(np.abs(P[:, None, 2] - cent[None, :, 2]) < 0.9, D, 1e9)
+        D[np.arange(len(P)), np.arange(s0, s0 + len(P))] = 1e9
+        nn[s0:s0 + 400] = D.min(1)
+    width = np.clip(nn * 1.15, 0.8, 2.6)
+    elem_size = np.stack([width, width, np.full(len(cent), 2.0)], axis=1)
     write_femb(
         os.path.join(out_dir, "brain.bin"),
         {
@@ -169,8 +182,13 @@ def export_meshes(src_dir, out_dir):
             "tris": tris,
             "quadOfTri": quad_of_tri,
             "faceElem": face_elem,
+            "elemCenter": rotate(cent, Vc).astype("<f4"),
+            "elemSize": elem_size.astype("<f4"),
         },
-        {"nVertices": int(V.shape[0]), "nTris": int(tris.shape[0]), "nElements": int(brain["Ne"])},
+        {
+            "nVertices": int(V.shape[0]), "nTris": int(tris.shape[0]), "nElements": int(brain["Ne"]),
+            "rot": rotation_matrix(*DEFAULT_ROTATE_DEG).reshape(-1).tolist(),
+        },
     )
     idx1 = np.asarray(fiber["idx1"]).reshape(-1).astype(np.int64) - 1
     idx2 = np.asarray(fiber["idx2"]).reshape(-1).astype(np.int64) - 1

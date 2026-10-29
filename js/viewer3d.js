@@ -92,6 +92,7 @@ export class SpatialViewer {
       const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
       this.materials.push(mat);
       this.scene.add(new THREE.Mesh(geo, mat));
+      this.addInterior(brain);
     } else {
       const shell = new THREE.MeshBasicMaterial({ color: 0x999999, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false });
       this.materials.push(shell);
@@ -193,6 +194,36 @@ export class SpatialViewer {
     this.render();
   }
 
+  /**
+   * Interior elements as boxes (surface elements are already drawn by the exact surface mesh), so cuts show coloured tissue
+   * instead of an empty shell. Box centres, sizes and the display rotation come from brain.bin (see tools/export_assets.py).
+   */
+  addInterior(brain) {
+    const { elemCenter, elemSize, faceElem } = brain.arrays;
+    if (!elemCenter || !brain.meta.rot) return;
+    const ne = elemCenter.length / 3, onSurface = new Uint8Array(ne);
+    for (let i = 0; i < faceElem.length; i++) onSurface[faceElem[i]] = 1;
+    const ids = [];
+    for (let e = 0; e < ne; e++) if (!onSurface[e]) ids.push(e);
+    this.innerIds = Int32Array.from(ids);
+    const r = brain.meta.rot;
+    const R = new THREE.Matrix4().set(r[0], r[1], r[2], 0, r[3], r[4], r[5], 0, r[6], r[7], r[8], 0, 0, 0, 0, 1);
+    const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    this.materials.push(mat);
+    const boxes = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, ids.length);
+    const m = new THREE.Matrix4();
+    ids.forEach((e, i) => {
+      m.makeScale(elemSize[e * 3] * 0.98, elemSize[e * 3 + 1] * 0.98, elemSize[e * 3 + 2] * 0.98);
+      m.premultiply(R);
+      m.setPosition(elemCenter[e * 3], elemCenter[e * 3 + 1], elemCenter[e * 3 + 2]);
+      boxes.setMatrixAt(i, m);
+    });
+    boxes.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ids.length * 3), 3);
+    boxes.frustumCulled = false;
+    this.innerBoxes = boxes;
+    this.scene.add(boxes);
+  }
+
   /** values: Float64Array of per-element (MPS) or per-fibre (MAS) predictions. */
   setValues(values) {
     const [lo, hi] = this.range;
@@ -209,6 +240,14 @@ export class SpatialViewer {
         for (let v = 0; v < 3; v++) out.set([lut[k], lut[k + 1], lut[k + 2]], tri * 9 + v * 3);
       }
       this.colorAttr.needsUpdate = true;
+      if (this.innerBoxes) {
+        const c = this.innerBoxes.instanceColor.array;
+        for (let i = 0; i < this.innerIds.length; i++) {
+          const k = col(values[this.innerIds[i]]);
+          c[i * 3] = lut[k]; c[i * 3 + 1] = lut[k + 1]; c[i * 3 + 2] = lut[k + 2];
+        }
+        this.innerBoxes.instanceColor.needsUpdate = true;
+      }
     } else {
       const out = this.lineColors.array;
       for (let i = 0; i < values.length; i++) {
