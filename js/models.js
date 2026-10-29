@@ -5,10 +5,12 @@ export const MODEL_TYPES = {
   DNN: "DNN",
   Lasso: "Lasso",
   Ridge: "Ridge",
-  "Random Forest - CART": "RF_Linear",
+  "Random Forest - Linear": "RF_Linear",
   "Random Forest - Curvature": "RF_Curvature",
 };
 export const MODEL_LABELS = Object.keys(MODEL_TYPES);
+/** Name shown to users; the internal key (and model files) keep the original "Random Forest - Linear". */
+export const modelLabel = (m) => (m === "Random Forest - Linear" ? "Random Forest - CART" : m);
 
 const DTYPES = {
   "<f8": Float64Array, "<f4": Float32Array, "<i4": Int32Array, "<i2": Int16Array,
