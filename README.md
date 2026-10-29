@@ -27,7 +27,7 @@ An output is flagged when `value >= threshold`. The result is reported as an inj
    - **Angular Velocity Trace**: upload a CSV with `time_(s)` and `Angular_velocity_(rad/s)`.
    - **Angular Acceleration Trace**: upload a CSV with `time_(s)` and `Angular_Acceleration_(rad/s2)`.
    - **Peak Values**: type the peak angular acceleration (rad/s²) and peak angular velocity (rad/s), or upload a one-row CSV with `Peak_Acceleration_(rad/s2)` and `Peak_Velocity_(rad/s)`.
-4. Choose the **Impact Direction** (Axial, Sagittal or Coronal) and the **Pre-trained Model** (DNN, Lasso, Ridge, Random Forest - CART, Random Forest - Curvature).
+4. Choose the **Impact Direction** (Axial, Sagittal or Coronal) and the **Pre-trained Model** (DNN, Lasso, Ridge, Random Forest - Linear, Random Forest - Curvature).
 5. Set **Visual** to ON to see the 3D spatial views, or OFF to skip them.
 6. The angular velocity trace preview appears automatically once the input is loaded or entered.
 7. Click **Run Prediction**.
