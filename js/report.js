@@ -1,6 +1,8 @@
 // Downloadable report of one run: a self-contained .html page, or a one-page A4 .pdf.
 // The PDF is written directly (no library): the page is drawn on a canvas, stored as a JPEG and wrapped in a minimal PDF.
 
+import { modelLabel } from "./models.js";
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (v, d = 4) => Number(v).toFixed(d);
 
@@ -13,7 +15,7 @@ export function reportRows({ res, cfg }, thresholds) {
   return {
     settings: [
       ["Simulation ID", res.simulationId], ["Species", "Pig"], ["Input", input],
-      ["Impact direction", cfg.direction], ["Model", cfg.modelType],
+      ["Impact direction", cfg.direction], ["Model", modelLabel(cfg.modelType)],
     ],
     results: [
       ["MPS95", fmt(o.MPS95), thresholds.MPS95.toFixed(2), o.MPS95_InjuryFlag],

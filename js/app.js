@@ -1,6 +1,6 @@
 // UI controller: pages, single run, results, batch mode and downloads.
 import { getVelocityTrace, readPeakValuesCSV, checkPeakRange } from "./impactProfile.js";
-import { ModelStore } from "./models.js";
+import { ModelStore, modelLabel } from "./models.js";
 import {
   runSimulation, overallCSV, spatialCSV, traceCSV, loadCentroids, batchConfigFor, safeFolderName,
   BATCH_SUMMARY_HEADER, MPS95_THRESHOLD, MAS95_THRESHOLD,
@@ -221,7 +221,7 @@ async function runPrediction() {
     busy("Reading or generating velocity trace…"); await tick();
     const trace = getVelocityTrace(cfg);
     lastTrace = trace; redrawTrace();
-    busy(`Loading ${cfg.modelType} models (${cfg.direction})…`); await tick();
+    busy(`Loading ${modelLabel(cfg.modelType)} models (${cfg.direction})…`); await tick();
     const res = await runSimulation(cfg, store, { spatial: true });
     busy("Preparing result plots…"); await tick();
     const [dataset, centroids] = await Promise.all([getDataset(), getCentroids()]);
@@ -262,7 +262,7 @@ function renderResults() {
   const { res, cfg } = cur;
   $("run-empty").hidden = true;
   $("run-body").hidden = false;
-  $("run-chip").textContent = `${res.simulationId} · ${cfg.direction} · ${cfg.modelType}`;
+  $("run-chip").textContent = `${res.simulationId} · ${cfg.direction} · ${modelLabel(cfg.modelType)}`;
 
   drawRunPlots();
 
