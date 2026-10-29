@@ -1,6 +1,7 @@
 // Small 3D pig brain (the MPS mesh) that shows the selected impact direction as a rotation arrow.
 // Frame used here: +X toward the viewer, Y to the right, +Z up (right-handed).
 import * as THREE from "three";
+import { AP, UP, RIGHT } from "./frame.js";
 
 export const DIRECTION_TEXT = {
   Axial: "Axial: the head rotates about the vertical axis, from left to right.",
@@ -11,14 +12,10 @@ export const DIRECTION_TEXT = {
 const ORANGE = 0xd85a30;
 const RING_R = 3.7;
 
-// Long (anterior-posterior) axis of the brain mesh, from its principal component. The picture is drawn looking down this axis.
-const AP = new THREE.Vector3(0.5666831, 0.8093131, -0.1545399);
-
 /** Brain surface (the same mesh as the MPS view) in the view frame: +X toward the viewer, Y to the viewer's right, +Z up; radius ~3.2. */
 function brainGeometry(brain) {
   const V = brain.arrays.V, tris = brain.arrays.tris;
-  const up = new THREE.Vector3(0, 0, 1).addScaledVector(AP, -AP.z).normalize();
-  const right = up.clone().cross(AP);
+  const up = UP, right = RIGHT;
   const P = new Float32Array(V.length);
   for (let i = 0; i < V.length; i += 3) {
     P[i] = V[i] * AP.x + V[i + 1] * AP.y + V[i + 2] * AP.z;

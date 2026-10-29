@@ -312,7 +312,7 @@ function applyCuts() {
     const t = Number(row.querySelector(".cut-slider").value) / 1000, flip = row.querySelector(".cut-flip").checked;
     const v = Object.values(state.viewers)[0];
     row.querySelector(".cut-slider").disabled = !on;
-    row.querySelector(".cut-val").textContent = v && on ? `${axis} = ${(v.bbox.min[axis] + (v.bbox.max[axis] - v.bbox.min[axis]) * t).toFixed(1)}` : "";
+    row.querySelector(".cut-val").textContent = v && on ? `${axis} = ${v.cutOffset(axis, t).toFixed(1)} mm` : "";
     for (const viewer of Object.values(state.viewers)) viewer.setCut(axis, on, t, flip);
   }
 }

@@ -2,6 +2,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "../vendor/OrbitControls.js";
 import { parseFEMB } from "./models.js";
+import { AXES } from "./frame.js";
 
 export const MPS_RANGE = [0.0, 0.5];
 export const MAS_RANGE = [0.0, 0.15];
@@ -113,7 +114,17 @@ export class SpatialViewer {
 
     geo.computeBoundingSphere();
     geo.computeBoundingBox();
-    this.bbox = geo.boundingBox.clone();
+    // extent of the brain along each anatomical axis (see frame.js)
+    this.extent = {};
+    for (const [k, dir] of Object.entries(AXES)) {
+      let lo = Infinity, hi = -Infinity;
+      for (let i = 0; i < pos.length; i += 3) {
+        const d = pos[i] * dir.x + pos[i + 1] * dir.y + pos[i + 2] * dir.z;
+        if (d < lo) lo = d;
+        if (d > hi) hi = d;
+      }
+      this.extent[k] = [lo, hi];
+    }
     this.center = geo.boundingSphere.center.clone();
     this.radius = geo.boundingSphere.radius;
 
@@ -138,14 +149,20 @@ export class SpatialViewer {
   setCut(axis, on, t = 0.5, flip = false) {
     if (!on) this.cuts[axis] = null;
     else {
-      const lo = this.bbox.min[axis], hi = this.bbox.max[axis], v = lo + (hi - lo) * t;
-      const n = new THREE.Vector3(axis === "x" ? 1 : 0, axis === "y" ? 1 : 0, axis === "z" ? 1 : 0);
+      const [lo, hi] = this.extent[axis], v = lo + (hi - lo) * t;
+      const n = AXES[axis].clone();
       // keep the side that is NOT cut away: coordinate <= v, or >= v when flipped
       this.cuts[axis] = flip ? new THREE.Plane(n, -v) : new THREE.Plane(n.negate(), v);
     }
     const planes = Object.values(this.cuts).filter(Boolean);
     for (const m of this.materials) { m.clippingPlanes = planes; m.needsUpdate = true; }
     this.render();
+  }
+
+  /** Position of a cut in mm from the centre of the brain along that axis. */
+  cutOffset(axis, t) {
+    const [lo, hi] = this.extent[axis];
+    return (hi - lo) * (t - 0.5);
   }
 
   /** Keep this view and another one at the same camera angle, zoom and pan. */
