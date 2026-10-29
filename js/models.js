@@ -5,7 +5,7 @@ export const MODEL_TYPES = {
   DNN: "DNN",
   Lasso: "Lasso",
   Ridge: "Ridge",
-  "Random Forest - Linear": "RF_Linear",
+  "Random Forest - CART": "RF_Linear",
   "Random Forest - Curvature": "RF_Curvature",
 };
 export const MODEL_LABELS = Object.keys(MODEL_TYPES);
