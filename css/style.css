@@ -423,3 +423,14 @@ button.toggle[aria-pressed="true"] { background: #7c3aed; border-color: #7c3aed;
 dialog.dlg { border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); max-width: 28rem; padding: 1.1rem 1.3rem; }
 dialog.dlg::backdrop { background: rgba(0, 0, 0, .45); }
 dialog.dlg h3 { margin-top: 0; }
+
+/* ---- Report / Download buttons with hover menus ---- */
+.dd { position: relative; display: inline-block; }
+.dd-btn { min-width: 6.5rem; }
+.dd-list { display: none; position: absolute; right: 0; top: calc(100% - 2px); padding-top: 6px; min-width: 13rem; z-index: 30; }
+.dd-list > button { display: block; width: 100%; text-align: left; background: var(--card); color: var(--ink); border: 1px solid var(--line); border-radius: 0; padding: .55rem .8rem; cursor: pointer; font-size: .9rem; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); }
+.dd-list > button:first-child { border-radius: 10px 10px 0 0; }
+.dd-list > button:last-child { border-radius: 0 0 10px 10px; border-top: 0; }
+.dd-list > button:hover:not(:disabled), .dd-list > button:focus-visible { background: var(--chip-bg); color: var(--chip-ink); }
+.dd-list > button:disabled { opacity: .45; cursor: not-allowed; }
+.dd:hover .dd-list, .dd:focus-within .dd-list { display: block; }

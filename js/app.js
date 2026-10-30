@@ -471,10 +471,22 @@ $("batch-suggest").addEventListener("close", () => { if ($("batch-suggest").retu
 /** Show the summary table (batch mode) or the normal results (regular mode) on the Run / Results page. */
 function setRunMode(batchView) {
   state.batchView = batchView;
-  for (const id of ["reset-views", "report-btn", "download-zip"]) $(id).hidden = batchView;
+  for (const id of ["reset-views", "report-dd", "download-dd"]) $(id).hidden = batchView;
   $("batch-panel").hidden = !batchView;
-  if (batchView) for (const id of ["run-body", "run-empty", "run-tabs", "download-all", "report-all"]) $(id).hidden = true;
+  if (batchView) for (const id of ["run-body", "run-empty", "run-tabs"]) $(id).hidden = true;
 }
+
+$("bp-folder").addEventListener("click", async () => {
+  const sink = state.outSink;
+  if (sink && sink.handle && typeof window.showOpenFilePicker === "function") {
+    try { await window.showOpenFilePicker({ startIn: sink.handle }); }
+    catch (e) { if (e.name !== "AbortError") toast(`Could not open the output folder: ${e.message}`, true); }
+  } else if (sink && sink.handle) {
+    toast(`Output folder: "${sink.handle.name}". Open it in your file manager to see the results.`, false, 8000);
+  } else {
+    toast(`The results were downloaded as ${sink && sink.zipName ? sink.zipName : "a .zip file"}. Look in your browser's download folder.`, false, 8000);
+  }
+});
 
 /** Where batch results go: straight into a folder the user picks, or (browsers without folder access) one zip. */
 async function openSink() {
@@ -482,7 +494,7 @@ async function openSink() {
   if (typeof window.showDirectoryPicker === "function") {
     const root = await window.showDirectoryPicker({ mode: "readwrite" });
     return {
-      ts, label: `the folder "${root.name}"`,
+      ts, label: `the folder "${root.name}"`, handle: root,
       async write(path, data) {
         const parts = path.split("/");
         let dir = root;
@@ -496,7 +508,7 @@ async function openSink() {
   }
   toast("This browser cannot save to a folder, so the results will be downloaded as one .zip instead.", false, 7000);
   const zip = new JSZip();
-  return { ts, label: "the downloaded .zip", async write(path, data) { zip.file(path, data); }, async finish() { download(await zipBlob(zip), `FEMML_BatchResults_${ts}.zip`); } };
+  return { ts, label: "the downloaded .zip", async write(path, data) { zip.file(path, data); }, async finish() { download(await zipBlob(zip), `FEMML_BatchResults_${ts}.zip`); this.zipName = `FEMML_BatchResults_${ts}.zip`; } };
 }
 
 function summaryCSV(rows) {
@@ -512,6 +524,8 @@ function addResultRow(tbl, r, message) {
   const cell = (text, cls) => { const c = tr.insertCell(); c.textContent = text; if (cls) c.className = cls; return c; };
   const failed = r.Status === "FAILED", injured = r.f1 === 1 || r.f2 === 1;
   cell(r.SimulationID);
+  cell(failed || r.pv === undefined ? "" : Number(r.pv).toFixed(2), "num");
+  cell(failed || r.pa === undefined ? "" : Math.round(r.pa).toLocaleString("en-US"), "num");
   cell(failed ? "Failed" : injured ? "Injured" : "Not Injured", failed ? "st-fail" : injured ? "st-injured" : "st-ok");
   cell(failed ? "" : Number(r.MPS95).toFixed(4), "num");
   cell(failed ? "" : Number(r.MAS95).toFixed(4), "num");
@@ -534,6 +548,8 @@ async function runBatchMode() {
   const n = cfgs.length + bad.length, rows = [], log = [], used = new Set();
   $("run").disabled = true;
   state.current = null; state.runs = [];
+  state.outSink = sink;
+  $("bp-folder").hidden = true; $("bp-folder-hint").hidden = true;
   setRunMode(true);
   show("run");
   const dirName = $("direction").value, modelName = $("model").value;
@@ -541,7 +557,7 @@ async function runBatchMode() {
   const tbl = $("bp-table"), prog = $("bp-progress"), status = $("bp-status");
   tbl.textContent = "";
   const head = tbl.insertRow();
-  for (const c of ["SimulationID", "Status", "MPS95", "MAS95", "MPS95 flag", "MAS95 flag", "Message"]) head.insertCell().outerHTML = `<th>${c}</th>`;
+  for (const c of ["SimulationID", "Peak Angular Velocity (rad/s)", "Peak Angular Acceleration (rad/s2)", "Status", "MPS95", "MAS95", "MPS95 flag", "MAS95 flag", "Message"]) head.insertCell().outerHTML = `<th>${c}</th>`;
   prog.max = n; prog.value = 0;
   let ok = 0;
   try {
@@ -580,6 +596,7 @@ async function runBatchMode() {
         row.overall = `${id}/${id}_OverallPredictions.csv`; row.smps = `${id}/${id}_SpatialMPS.csv`; row.smas = `${id}/${id}_SpatialMAS.csv`;
         row.MPS95 = res.overall.MPS95; row.MAS95 = res.overall.MAS95;
         row.f1 = res.overall.MPS95_InjuryFlag ? 1 : 0; row.f2 = res.overall.MAS95_InjuryFlag ? 1 : 0;
+        row.pv = res.features.byName.ang_vel_max; row.pa = res.features.byName.ang_acc_max;
         message = `Saved in ${id}/`;
         ok++;
         log.push(`OK    ${id.padEnd(24)} MPS95=${res.overall.MPS95.toFixed(4)}  MAS95=${res.overall.MAS95.toFixed(4)}`);
@@ -598,6 +615,7 @@ async function runBatchMode() {
     await sink.write("batch_log.txt", log.join("\n") + "\n");
     await sink.finish();
     setStatus(status, `Done. ${ok} of ${n} succeeded. Results were saved to ${sink.label}.`, ok === n ? "ok" : "err");
+    $("bp-folder").hidden = false; $("bp-folder-hint").hidden = !sink.handle;
   } catch (e) {
     console.error(e);
     setStatus(status, `Batch stopped: ${e.message}`, "err");
@@ -607,11 +625,18 @@ async function runBatchMode() {
 }
 
 // ---------------------------------------------------------------- result tabs (several simulations)
+/** The "All tabs" / "All simulations" choices only make sense with two or more successful simulations. */
+function setAllOptions(on) {
+  for (const id of ["report-all", "download-all"]) {
+    $(id).disabled = !on;
+    $(id).title = on ? "" : "Only one simulation is open";
+  }
+}
 function renderTabs() {
   const bar = $("run-tabs"), runs = state.runs;
   bar.textContent = "";
   bar.hidden = runs.length < 2;
-  $("download-all").hidden = $("report-all").hidden = runs.filter((r) => r.cur).length < 2;
+  setAllOptions(runs.filter((r) => r.cur).length >= 2);
   runs.forEach((r, i) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "run-tab" + (r.cur ? "" : " failed"); b.setAttribute("role", "tab");
@@ -1010,7 +1035,7 @@ $("restart").addEventListener("click", () => {
   state.current = null;
   state.runs = []; state.activeRun = 0;
   setRunMode(false);
-  $("run-tabs").hidden = true; $("download-all").hidden = true; $("report-all").hidden = true;
+  $("run-tabs").hidden = true; setAllOptions(false);
   $("run-body").hidden = true; $("run-empty").hidden = false; $("run-chip").textContent = "No results yet";
   $("run-empty").innerHTML = "Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.";
   resetForm();
