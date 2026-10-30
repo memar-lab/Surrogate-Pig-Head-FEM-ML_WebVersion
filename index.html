@@ -63,6 +63,7 @@
     <button class="step" data-page="input">2 · Input Parameters</button>
     <button class="step" data-page="run">3 · Run / Results</button>
     <button class="step" data-page="batch">Batch</button>
+    <button class="step" data-page="instructions">Instructions</button>
     <button class="step" data-page="about">About</button>
   </nav>
   <button id="restart" class="ghost" title="Clear all inputs and results">↻ Restart</button>
@@ -257,6 +258,118 @@
     </div>
   </section>
 
+  <!-- Instructions -->
+  <section class="page" id="page-instructions" hidden>
+    <div class="card prose">
+      <h2>Instructions</h2>
+      <p>This platform predicts brain tissue response of the pig head finite element model from head impact kinematics. Run one simulation on <b>Input Parameters</b>, or many at once on <b>Batch</b>.</p>
+      <ul class="toc">
+        <li><a href="#ins-inputs">How to provide inputs: input options and units</a></li>
+        <li><a href="#ins-single">Running one simulation</a></li>
+        <li><a href="#ins-batch">Running batch mode</a></li>
+        <li><a href="#ins-results">Expected results</a></li>
+      </ul>
+
+      <h3 id="ins-inputs">How to provide inputs: input options and units</h3>
+      <p>Three input types are supported. Whatever you choose, it is converted into an angular velocity trace before the 15 kinematic features are extracted. For one run, select one input type. In a batch, every CSV file must use the same input type. Keep the column names exactly as in the templates (download them from the Input Parameters page, or from the <a href="Templates/">Templates</a> folder).</p>
+      <table class="ins-table">
+        <tr><th>Input type</th><th>CSV columns</th><th>Units</th></tr>
+        <tr><td><b>VelocityTrace</b><br>Angular velocity trace</td><td><code>time_(s)</code><br><code>Angular_velocity_(rad/s)</code></td><td>s, rad/s</td></tr>
+        <tr><td><b>AccelerationTrace</b><br>Angular acceleration trace</td><td><code>time_(s)</code><br><code>Angular_Acceleration_(rad/s2)</code></td><td>s, rad/s²</td></tr>
+        <tr><td><b>PeakValues</b><br>Idealized sinusoidal profile</td><td><code>Peak_Acceleration_(rad/s2)</code><br><code>Peak_Velocity_(rad/s)</code></td><td>rad/s², rad/s</td></tr>
+      </table>
+      <h4>VelocityTrace</h4>
+      <p>Use this when your file already contains angular velocity. It is read directly.</p>
+<pre>time_(s),Angular_velocity_(rad/s)
+0,0
+0.001,15
+0.002,30
+0.003,45</pre>
+      <h4>AccelerationTrace</h4>
+      <p>Use this when your file contains angular acceleration. It is integrated to angular velocity (trapezoid rule) before feature extraction.</p>
+<pre>time_(s),Angular_Acceleration_(rad/s2)
+0,0
+0.001,50000
+0.002,100000
+0.003,50000</pre>
+      <h4>PeakValues</h4>
+      <p>Use this when you only know the peak angular acceleration and peak angular velocity. Enter them in the two boxes, or load a one-row CSV (exactly one row per simulation):</p>
+<pre>Peak_Acceleration_(rad/s2),Peak_Velocity_(rad/s)
+150000,100</pre>
+      <p>An idealized sinusoidal acceleration pulse and its analytical velocity are generated. With α<sub>max</sub> the peak acceleration (rad/s²) and ω<sub>peak</sub> the peak velocity (rad/s):</p>
+<pre>T = π · ω_peak / α_max
+α(t) = α_max · sin(2π t / T)
+ω(t) = (α_max · T / 2π) · (1 − cos(2π t / T))</pre>
+      <p>The time step is 10 µs (<code>dt = 1e-5 s</code>) and the trace lasts <code>T + 0.020 s</code>: after the pulse, acceleration and velocity are held at zero for an extra 20 ms.</p>
+      <h4>Other settings</h4>
+      <ul>
+        <li><b>Simulation ID</b>: a name for the run. It labels the results and the downloaded files.</li>
+        <li><b>Impact Direction</b>: <b>Axial</b>, <b>Sagittal</b> or <b>Coronal</b>. The picture beside it shows the rotation on the pig brain. Multi-Direction is reserved for future development; current models are not trained for it.</li>
+        <li><b>Pre-trained Model</b>: DNN, Lasso, Ridge, Random Forest - CART or Random Forest - Curvature.</li>
+        <li><b>Visual</b>: ON draws the 3D spatial MPS and MAS views; OFF skips them (the spatial values stay in the downloadable CSV files).</li>
+      </ul>
+
+      <h3 id="ins-single">Running one simulation</h3>
+      <ol>
+        <li>On <b>Species</b>, keep <b>Pig</b> selected (the only species available now) and continue.</li>
+        <li>On <b>Input Parameters</b>, enter the Simulation ID, choose the input type and load the file or enter the peak values.</li>
+        <li>Choose the impact direction, the model and the visual option. The velocity trace preview appears automatically once the input is valid; you can also press <b>load an example</b>.</li>
+        <li>Press <b>Run Prediction</b>. The page moves to <b>Run / Results</b>.</li>
+        <li>Review the results, then use <b>Download results (.zip)</b> for the data files or <b>Download report</b> for an .html or .pdf summary.</li>
+      </ol>
+
+      <h3 id="ins-batch">Running batch mode</h3>
+      <p>Batch mode runs a whole set of CSV files with the same input type, impact direction and model. It runs in your browser; nothing is uploaded.</p>
+      <ol>
+        <li>Open the <b>Batch</b> page and choose the <b>Input Type</b>, <b>Impact Direction</b> and <b>Model Architecture</b> that apply to every file.</li>
+        <li>Drop the CSV files on the drop zone or pick several at once. To try it first, press <b>use the 3 example files</b> (peak-value inputs; the same files are in <a href="ExampleBatchFolder/SIM_001.csv">ExampleBatchFolder</a>).</li>
+        <li>Optionally untick <b>Include spatial MPS / MAS CSVs</b> for a fast summary-only run (spatial files are about 5 MB each per simulation).</li>
+        <li>Press <b>Run batch</b> and watch the progress bar. A table of results appears at the end.</li>
+        <li>Press <b>Download batch results (.zip)</b>.</li>
+      </ol>
+      <h4>Batch input rules</h4>
+      <ul>
+        <li><b>Do not mix input types.</b> If you need velocity traces and peak values, run two batches.</li>
+        <li><b>The file name becomes the Simulation ID</b>: <code>SIM_001.csv</code> → <code>SIM_001</code>.</li>
+        <li><b>Template files are skipped</b>: any file with <code>template</code> in its name.</li>
+        <li><b>PeakValues</b> files must contain exactly one input row each.</li>
+        <li>If one simulation fails, the batch continues with the next file. The failed row is marked <code>Failed</code> and the reason is in <code>ErrorMessage</code>.</li>
+      </ul>
+
+      <h3 id="ins-results">Expected results</h3>
+      <h4>Regular mode (one simulation)</h4>
+      <p>The <b>Run / Results</b> page shows:</p>
+      <ul>
+        <li>the <b>overall prediction</b>: MPS95 (threshold 0.30) and MAS95 (threshold 0.13), each flagged when <code>value ≥ threshold</code>; the result is an injury-level response if either is flagged;</li>
+        <li>the position of this run in the training-data distribution, with a warning when the input is outside the training range;</li>
+        <li>the <b>spatial MPS</b> (each of the 13,196 brain elements) and <b>spatial MAS</b> (each of the 73,425 axonal fibre beams) in two linked 3D views, with cut planes (when Visual is ON).</li>
+      </ul>
+      <p><b>Download results (.zip)</b> contains a folder named after the Simulation ID with:</p>
+<pre>&lt;SimulationID&gt;_OverallPredictions.csv
+&lt;SimulationID&gt;_SpatialMPS.csv
+&lt;SimulationID&gt;_SpatialMAS.csv
+&lt;SimulationID&gt;_VelocityTrace.csv
+&lt;SimulationID&gt;_SpatialMPSPreview.png     (Visual ON)
+&lt;SimulationID&gt;_SpatialMASPreview.png     (Visual ON)
+&lt;SimulationID&gt;_RunResultsPage.png        (Visual ON)</pre>
+      <h4>Batch mode</h4>
+      <p>The batch page lists one row per input file (status, MPS95, MAS95 and flags). The downloaded <b>.zip</b> contains:</p>
+<pre>_BatchSummaries/BatchSummary_&lt;date_time&gt;.csv
+batch_log.txt
+&lt;SimulationID&gt;/&lt;SimulationID&gt;_OverallPredictions.csv
+&lt;SimulationID&gt;/&lt;SimulationID&gt;_SpatialMPS.csv   (if spatial CSVs are included)
+&lt;SimulationID&gt;/&lt;SimulationID&gt;_SpatialMAS.csv   (if spatial CSVs are included)</pre>
+      <p>Batch mode does not draw 3D views or export screenshots. The batch summary has one row per input file and is the first file to check. Its columns are:</p>
+<pre>SimulationID, InputFile, Status, ErrorMessage, MPS95, MAS95,
+MPS95_InjuryFlag, MAS95_InjuryFlag, OutputFolder, OverallCSV,
+SpatialMPS_CSV, SpatialMAS_CSV</pre>
+      <h4>Injury threshold rule</h4>
+<pre>MPS95_InjuryFlag = MPS95 ≥ 0.30
+MAS95_InjuryFlag = MAS95 ≥ 0.13</pre>
+      <p>A value below the threshold is below threshold; a value equal to or above it sets the injury flag to true.</p>
+    </div>
+  </section>
+
   <!-- About -->
   <section class="page" id="page-about" hidden>
     <div class="card prose">
@@ -271,16 +384,17 @@
         <li><b>Spatial MAS</b>: strain for each of the 73,425 axonal fibre beams</li>
       </ul>
       <p>An output is flagged when <code>value ≥ threshold</code>. The result is flagged as an injury-level response if either MPS95 or MAS95 is flagged.</p>
-      <h3>Input types</h3>
-      <ul>
-        <li><b>VelocityTrace</b>: CSV with <code>time_(s)</code>, <code>Angular_velocity_(rad/s)</code></li>
-        <li><b>AccelerationTrace</b>: CSV with <code>time_(s)</code>, <code>Angular_Acceleration_(rad/s2)</code>; integrated to velocity (trapezoid rule)</li>
-        <li><b>PeakValues</b>: peak acceleration (rad/s²) and peak velocity (rad/s); an idealized sinusoidal pulse of duration <code>T = π·ω<sub>peak</sub> / α<sub>peak</sub></code> is generated at dt = 10 µs plus 20 ms of rest</li>
-      </ul>
+      <p>Input formats, units and how to run single and batch predictions are described on the <button class="link" data-goto="instructions">Instructions</button> page.</p>
       <h3>Scientific references</h3>
+      <h4>Overall MPS95 and MAS95</h4>
+      <p>The platform uses injury thresholds of <b>0.30 for MPS95</b> and <b>0.13 for MAS95</b>. These thresholds were identified for traumatic axonal injury prediction in the pig brain model.</p>
       <ol>
         <li>Hajiaghamemar, M., Wu, T., Panzer, M.B. and Margulies, S.S., 2020. <i>Embedded axonal fiber tracts improve finite element model predictions of traumatic brain injury.</i> Biomechanics and Modeling in Mechanobiology, 19(3), pp. 1109–1130.</li>
         <li>Wu, T., Hajiaghamemar, M., Giudice, J.S., Alshareef, A., Margulies, S.S. and Panzer, M.B., 2021. <i>Evaluation of tissue-level brain injury metrics using species-specific simulations.</i> Journal of Neurotrauma, 38(13), pp. 1879–1888.</li>
+      </ol>
+      <h4>Spatial MPS and MAS</h4>
+      <p>Spatial MPS and MAS outputs are based on the multiscale white-matter-tract embedded FEM framework.</p>
+      <ol start="3">
         <li>Hajiaghamemar, M. and Margulies, S.S., 2021. <i>Multi-scale white matter tract embedded brain finite element model predicts the location of traumatic diffuse axonal injury.</i> Journal of Neurotrauma, 38(1), pp. 144–157.</li>
       </ol>
       <h3>Privacy and accuracy</h3>

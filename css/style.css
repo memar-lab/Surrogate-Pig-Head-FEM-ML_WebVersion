@@ -364,3 +364,12 @@ progress { width: 100%; height: 10px; margin-top: 0.8rem; accent-color: var(--ac
 @keyframes splash-logo { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
 @keyframes splash-word { from { max-width: 0; opacity: 0; padding-left: 0; } to { max-width: 18em; opacity: 1; padding-left: .6em; } }
 @keyframes splash-out { to { opacity: 0; transform: scale(1.06); visibility: hidden; } }
+
+/* ---- instructions page ---- */
+.prose h4 { margin: 1rem 0 .3rem; font-size: 1rem; }
+.prose pre { background: var(--card-2); border: 1px solid var(--line); border-radius: 8px; padding: .6rem .8rem; overflow-x: auto; font-size: .85rem; line-height: 1.45; }
+.ins-table { border-collapse: collapse; width: 100%; font-size: .9rem; margin: .6rem 0; }
+.ins-table th, .ins-table td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.toc { padding-left: 1.2rem; }
+.prose h3[id] { scroll-margin-top: 80px; }
+@media (max-width: 700px) { .ins-table { font-size: .8rem; } .ins-table code { word-break: break-all; } }
