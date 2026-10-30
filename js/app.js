@@ -91,7 +91,9 @@ let batchMode = false;
 const inputType = () => document.querySelector('input[name="itype"]:checked').value;
 const filesOf = (type = inputType()) => loaded[type] || [];
 /** More than one file selected for the current input type: every file is its own simulation. */
-const isMulti = () => filesOf().length > 1;
+/** Peak values: typed traces (Add trace) or two or more files run from the list. Other types: two or more files. */
+const usesList = (type = inputType()) => type === "PeakValues" ? (loaded.PeakValues.length >= 2 || loaded.PeakValues.some((e) => e.manual)) : filesOf(type).length > 1;
+const isMulti = () => usesList();
 
 // Simulation ID default: the loaded file's name for trace inputs, SIM_001 for peak values; the user may overwrite it.
 let idEdited = false;
@@ -99,8 +101,19 @@ $("sim-id").addEventListener("input", () => { idEdited = true; });
 const fileBaseName = (name) => name.replace(/\.csv$/i, "");
 function defaultSimId() {
   const t = inputType();
-  const f = t === "PeakValues" ? null : filesOf(t)[0];
+  if (t === "PeakValues") return nextSimId("");
+  const f = filesOf(t)[0];
   return f ? fileBaseName(f.name) : "SIM_001";
+}
+/** Next free ID for a typed peak-values trace: SIM_001 → SIM_002 (any other name starts again at SIM_001), skipping IDs already in the list. */
+function nextSimId(id) {
+  const taken = new Set(loaded.PeakValues.map((e) => e.id.trim().toLowerCase()));
+  const m = /^SIM_(\d+)$/i.exec(String(id).trim());
+  const width = m ? m[1].length : 3;
+  const make = (k) => `SIM_${String(k).padStart(width, "0")}`;
+  let n = m ? Number(m[1]) + 1 : 1;
+  while (taken.has(make(n).toLowerCase())) n++;
+  return make(n);
 }
 function setDefaultSimId(force) {
   if (force || !idEdited) { $("sim-id").value = defaultSimId(); idEdited = false; }
@@ -108,16 +121,16 @@ function setDefaultSimId(force) {
 
 /** One editable Simulation ID per selected file (shown only when several files are selected). */
 function renderSimList() {
-  const multi = isMulti(), box = $("sim-list");
-  $("sim-id-field").hidden = multi;
+  const multi = isMulti(), box = $("sim-list"), peakType = inputType() === "PeakValues";
+  $("sim-id-field").hidden = multi && !peakType; // with peak values the ID box names the next trace to add
   box.hidden = !multi;
-  const peak = $("peak-acc"), pv = $("peak-vel");
-  peak.disabled = pv.disabled = inputType() === "PeakValues" && multi;
   if (!multi) { box.textContent = ""; return; }
   box.textContent = "";
   const head = document.createElement("div");
   head.className = "sim-head";
-  head.textContent = `${filesOf().length} simulations will run together. Each Simulation ID defaults to its file name; edit it if you like.`;
+  head.textContent = peakType
+    ? `${filesOf().length} trace${filesOf().length === 1 ? "" : "s"} will run together. Values in the boxes above only count when you press Add trace; edit an ID here if you like.`
+    : `${filesOf().length} simulations will run together. Each Simulation ID defaults to its file name; edit it if you like.`;
   box.appendChild(head);
   filesOf().forEach((f, i) => {
     const row = document.createElement("div");
@@ -149,14 +162,14 @@ function removeFile(i) {
   const type = inputType();
   loaded[type].splice(i, 1);
   previewIdx = Math.max(0, Math.min(previewIdx > i ? previewIdx - 1 : previewIdx, loaded[type].length - 1));
-  if (type === "PeakValues" && loaded[type].length === 1) {
+  if (type === "PeakValues" && loaded[type].length === 1 && !loaded[type][0].manual) {
     try {
       const p = readPeakValuesCSV(loaded[type][0].text);
       $("peak-acc").value = p.peakAcceleration;
       $("peak-vel").value = p.peakVelocity;
     } catch (e) { toast(e.message, true); }
   }
-  setDefaultSimId(true);
+  if (!usesList()) setDefaultSimId(true);
   renderSimList();
   autoTrace();
 }
@@ -195,6 +208,34 @@ $("file-vel").addEventListener("change", (e) => readFileInto(e.target, "Velocity
 $("file-acc").addEventListener("change", (e) => readFileInto(e.target, "AccelerationTrace"));
 $("file-peak").addEventListener("change", (e) => readFileInto(e.target, "PeakValues"));
 
+$("add-trace").addEventListener("click", () => {
+  try {
+    const a = $("peak-acc").value.trim(), v = $("peak-vel").value.trim();
+    if (a === "" || v === "") throw new Error("Enter peak acceleration and peak velocity first.");
+    checkPeakRange(Number(a), Number(v));
+    const id = $("sim-id").value.trim();
+    if (!id) throw new Error("Simulation ID is required.");
+    const list = loaded.PeakValues;
+    // a single loaded file is what the boxes show: adding commits it, rather than listing it twice
+    const others = list.length === 1 && !list[0].manual ? [] : list;
+    if (others.some((e) => e.id.trim().toLowerCase() === id.toLowerCase())) throw new Error(`Simulation ID "${id}" is already in the list. Change it first.`);
+    if (!batchMode && others.length >= MAX_FILES) throw new Error(`Regular mode runs up to ${MAX_FILES} traces. Turn on Batch mode to run more.`);
+    loaded.PeakValues = others;
+    loaded.PeakValues.push({
+      manual: true, id, name: `${Number(a).toLocaleString("en-US")} rad/s², ${Number(v)} rad/s`,
+      text: `Peak_Acceleration_(rad/s2),Peak_Velocity_(rad/s)
+${Number(a)},${Number(v)}
+`,
+    });
+    previewIdx = loaded.PeakValues.length - 1;
+    $("sim-id").value = nextSimId(id);
+    idEdited = false;
+    renderSimList();
+    autoTrace();
+    if (!batchMode && loaded.PeakValues.length === 11) suggestBatch(11);
+  } catch (e) { toast(e.message, true); }
+});
+
 /** Settings for the file at `idx` (several files), or for the single simulation. */
 function getCfg(forTrace = false, idx = 0) {
   const type = inputType(), multi = isMulti(), file = filesOf(type)[idx];
@@ -210,7 +251,7 @@ function getCfg(forTrace = false, idx = 0) {
       try { p = readPeakValuesCSV(file.text); } catch (e) { throw new Error(`${file.name}: ${e.message}`); }
       cfg.peakAcceleration = p.peakAcceleration;
       cfg.peakVelocity = p.peakVelocity;
-      cfg.fileName = file.name;
+      if (!file.manual) cfg.fileName = file.name;
     } else {
       const a = $("peak-acc").value.trim(), v = $("peak-vel").value.trim();
       if (a === "" || v === "") throw new Error("Peak acceleration and peak velocity are required.");

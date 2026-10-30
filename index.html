@@ -118,8 +118,9 @@
               <div class="inline">
                 <label class="field">Peak Accel. (rad/s²) <input id="peak-acc" type="number" min="0" step="any" value="150000"></label>
                 <label class="field">Peak Vel. (rad/s) <input id="peak-vel" type="number" min="0" step="any" value="100"></label>
+                <button type="button" id="add-trace" class="secondary" title="Add these values as a trace, then enter the next one">Add trace</button>
               </div>
-              <p class="hint">Or load one-row files (several files run all at once): <input type="file" id="file-peak" accept=".csv,text/csv" multiple> · <a href="Templates/PeakValues_Template.csv" download>template</a></p>
+              <p class="hint">Enter values and press <b>Add trace</b> to run several traces together (the Simulation ID goes up by one each time), or load one-row files (several files run all at once): <input type="file" id="file-peak" accept=".csv,text/csv" multiple> · <a href="Templates/PeakValues_Template.csv" download>template</a></p>
             </div>
           </fieldset>
 
@@ -321,6 +322,7 @@
         <li>On <b>Input Parameters</b>, enter the Simulation ID, choose the input type and load the file or enter the peak values.</li>
         <li>Choose the impact direction, the model and the visual option. The velocity trace preview appears automatically once the input is valid; you can also press <b>load an example</b>.</li>
         <li><b>Several files at once:</b> select up to 20 files in the file picker (all of the same input type). Each file becomes its own simulation, and its Simulation ID defaults to the file name, which you can edit in the list that appears. Direction, model and Visual apply to all of them.</li>
+        <li>For peak values you can also type several traces: enter the two values, press <b>Add trace</b>, then enter the next ones. The Simulation ID goes up by one each time (SIM_001, SIM_002, …); a different name starts again at SIM_001. Use the list below to rename or remove traces.</li>
         <li>A velocity trace preview shows every selected file in its own colour; click a name (in the list or under the plot) to highlight that trace. The <b>×</b> button next to a file removes it from the run.</li>
         <li>Selecting more than 10 files suggests <b>Batch mode</b> (the button next to Run). In batch mode no plots or 3D views are drawn: you choose an output folder, the results are written there directly, and a table shows SimulationID, Status (Injured / Not Injured), MPS95, MAS95, the two flags and a message. Batch mode has no 20-file limit. Browsers that cannot save to a folder download one .zip instead.</li>
         <li>Press <b>Run Prediction</b>. The page moves to <b>Run / Results</b>.</li>

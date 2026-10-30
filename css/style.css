@@ -153,6 +153,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
 @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
 .inline { display: flex; gap: 0.8rem; flex-wrap: wrap; }
 .inline > .field { flex: 1 1 150px; }
+.inline > button { align-self: flex-end; }
 
 .field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.9rem; }
 input[type="text"], input[type="number"], select {
