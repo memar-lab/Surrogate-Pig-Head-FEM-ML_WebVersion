@@ -380,3 +380,17 @@ progress { width: 100%; height: 10px; margin-top: 0.8rem; accent-color: var(--ac
 .refs h4 { color: var(--chip-ink); }
 .refs li { color: var(--chip-ink); }
 .refs li i { font-weight: 600; }
+
+/* ---- several simulations: id list and result tabs ---- */
+.sim-list { margin-top: .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); padding: .5rem .7rem; max-height: 260px; overflow-y: auto; }
+.sim-list .sim-head { font-size: .85rem; color: var(--muted); margin-bottom: .4rem; }
+.sim-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .6rem; align-items: center; margin: .25rem 0; }
+.sim-row .sim-file { font-size: .85rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-row input { width: 100%; box-sizing: border-box; }
+.run-tabs { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .5rem; margin-bottom: .8rem; border-bottom: 1px solid var(--line); }
+.run-tab { flex: none; background: var(--card-2); color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: .3rem .9rem; font-size: .88rem; cursor: pointer; display: inline-flex; align-items: center; gap: .4rem; }
+.run-tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.run-tab .dot { width: 8px; height: 8px; border-radius: 50%; background: #d4372a; }
+.run-tab.failed { border-color: #d4372a; color: #d4372a; }
+.run-tab.failed[aria-selected="true"] { background: #d4372a; color: #fff; }
+.run-error { white-space: pre-wrap; color: #d4372a; }

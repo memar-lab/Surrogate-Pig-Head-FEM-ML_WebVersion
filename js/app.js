@@ -66,7 +66,7 @@ function stamp() {
 const fmt6 = (v) => v.toFixed(6);
 
 // ---------------------------------------------------------------- navigation
-const state = { species: "Pig", current: null, viewers: {}, page: "species" };
+const state = { species: "Pig", current: null, runs: [], activeRun: 0, viewers: {}, page: "species" };
 function show(page) {
   state.page = page;
   $$(".page").forEach((p) => (p.hidden = p.id !== `page-${page}`));
@@ -80,69 +80,127 @@ $$("[data-goto]").forEach((b) => b.addEventListener("click", () => show(b.datase
 $("to-input").addEventListener("click", () => show("input"));
 
 // ---------------------------------------------------------------- input form
-const loaded = { VelocityTrace: null, AccelerationTrace: null, PeakValues: null }; // {name, text}
+const MAX_FILES = 20;
+const loaded = { VelocityTrace: [], AccelerationTrace: [], PeakValues: [] }; // [{name, text, id}]
 let lastTrace = null;
 
 const inputType = () => document.querySelector('input[name="itype"]:checked').value;
+const filesOf = (type = inputType()) => loaded[type] || [];
+/** More than one file selected for the current input type: every file is its own simulation. */
+const isMulti = () => filesOf().length > 1;
 
 // Simulation ID default: the loaded file's name for trace inputs, SIM_001 for peak values; the user may overwrite it.
 let idEdited = false;
 $("sim-id").addEventListener("input", () => { idEdited = true; });
+const fileBaseName = (name) => name.replace(/\.csv$/i, "");
 function defaultSimId() {
   const t = inputType();
-  const f = t === "PeakValues" ? null : loaded[t];
-  return f ? f.name.replace(/\.csv$/i, "") : "SIM_001";
+  const f = t === "PeakValues" ? null : filesOf(t)[0];
+  return f ? fileBaseName(f.name) : "SIM_001";
 }
 function setDefaultSimId(force) {
   if (force || !idEdited) { $("sim-id").value = defaultSimId(); idEdited = false; }
 }
 
+/** One editable Simulation ID per selected file (shown only when several files are selected). */
+function renderSimList() {
+  const multi = isMulti(), box = $("sim-list");
+  $("sim-id-field").hidden = multi;
+  box.hidden = !multi;
+  const peak = $("peak-acc"), pv = $("peak-vel");
+  peak.disabled = pv.disabled = inputType() === "PeakValues" && multi;
+  if (!multi) { box.textContent = ""; return; }
+  box.textContent = "";
+  const head = document.createElement("div");
+  head.className = "sim-head";
+  head.textContent = `${filesOf().length} simulations will run together. Each Simulation ID defaults to its file name; edit it if you like.`;
+  box.appendChild(head);
+  filesOf().forEach((f, i) => {
+    const row = document.createElement("div");
+    row.className = "sim-row";
+    const name = document.createElement("span");
+    name.className = "sim-file"; name.textContent = f.name; name.title = f.name;
+    const input = document.createElement("input");
+    input.type = "text"; input.value = f.id; input.autocomplete = "off"; input.spellcheck = false;
+    input.setAttribute("aria-label", `Simulation ID for ${f.name}`);
+    input.addEventListener("input", () => { f.id = input.value; });
+    row.append(name, input);
+    box.appendChild(row);
+  });
+}
+
 function updateInputMode() {
   const t = inputType();
   setDefaultSimId(false);
+  renderSimList();
   $$(".sub").forEach((s) => (s.hidden = s.dataset.for !== t));
   autoTrace();
 }
 $$('input[name="itype"]').forEach((r) => r.addEventListener("change", updateInputMode));
 
 async function readFileInto(input, key) {
-  const f = input.files && input.files[0];
-  loaded[key] = f ? { name: f.name, text: await f.text() } : null;
-  if (key === "PeakValues" && f) {
+  let list = Array.from(input.files || []);
+  if (list.length > MAX_FILES) {
+    toast(`Only the first ${MAX_FILES} files are used. Use the Batch page for larger sets.`, true);
+    list = list.slice(0, MAX_FILES);
+  }
+  loaded[key] = await Promise.all(list.map(async (f) => ({ name: f.name, text: await f.text(), id: fileBaseName(f.name) })));
+  if (key === "PeakValues" && loaded[key].length) {
     try {
-      const p = readPeakValuesCSV(loaded[key].text);
+      const p = readPeakValuesCSV(loaded[key][0].text);
       $("peak-acc").value = p.peakAcceleration;
       $("peak-vel").value = p.peakVelocity;
     } catch (e) { toast(e.message, true); }
   }
   setDefaultSimId(true);
+  renderSimList();
   autoTrace();
 }
 $("file-vel").addEventListener("change", (e) => readFileInto(e.target, "VelocityTrace"));
 $("file-acc").addEventListener("change", (e) => readFileInto(e.target, "AccelerationTrace"));
 $("file-peak").addEventListener("change", (e) => readFileInto(e.target, "PeakValues"));
 
-function getCfg(forTrace = false) {
-  const simulationId = $("sim-id").value.trim() || (forTrace ? "SIM" : "");
-  if (!simulationId) throw new Error("Simulation ID is required.");
-  const type = inputType();
+/** Settings for the file at `idx` (several files), or for the single simulation. */
+function getCfg(forTrace = false, idx = 0) {
+  const type = inputType(), multi = isMulti(), file = filesOf(type)[idx];
+  const simulationId = (multi ? file.id : $("sim-id").value).trim() || (forTrace ? "SIM" : "");
+  if (!simulationId) throw new Error(multi ? `Simulation ID is required for ${file.name}.` : "Simulation ID is required.");
   const cfg = {
     simulationId, inputType: type, direction: $("direction").value, modelType: $("model").value,
     visual: $("visual").value === "ON",
   };
   if (type === "PeakValues") {
-    const a = $("peak-acc").value.trim(), v = $("peak-vel").value.trim();
-    if (a === "" || v === "") throw new Error("Peak acceleration and peak velocity are required.");
-    cfg.peakAcceleration = Number(a);
-    cfg.peakVelocity = Number(v);
+    if (multi) {
+      let p;
+      try { p = readPeakValuesCSV(file.text); } catch (e) { throw new Error(`${file.name}: ${e.message}`); }
+      cfg.peakAcceleration = p.peakAcceleration;
+      cfg.peakVelocity = p.peakVelocity;
+      cfg.fileName = file.name;
+    } else {
+      const a = $("peak-acc").value.trim(), v = $("peak-vel").value.trim();
+      if (a === "" || v === "") throw new Error("Peak acceleration and peak velocity are required.");
+      cfg.peakAcceleration = Number(a);
+      cfg.peakVelocity = Number(v);
+    }
     checkPeakRange(cfg.peakAcceleration, cfg.peakVelocity);
   } else {
-    const f = loaded[type];
-    if (!f) throw new Error("No input file was selected.");
-    cfg.text = f.text;
-    cfg.fileName = f.name;
+    if (!file) throw new Error("No input file was selected.");
+    cfg.text = file.text;
+    cfg.fileName = file.name;
   }
   return cfg;
+}
+/** All simulations to run; Simulation IDs must be unique. */
+function getCfgs() {
+  const n = isMulti() ? filesOf().length : 1;
+  const cfgs = Array.from({ length: n }, (_, i) => getCfg(false, i));
+  const seen = new Set();
+  for (const c of cfgs) {
+    const key = c.simulationId.toLowerCase();
+    if (seen.has(key)) throw new Error(`Simulation ID "${c.simulationId}" is used more than once. Give every simulation its own ID.`);
+    seen.add(key);
+  }
+  return cfgs;
 }
 
 function redrawTrace() {
@@ -183,7 +241,7 @@ updateDirectionPicture();
 /** Rebuild the velocity-trace preview from the current input (called whenever the input changes). */
 function autoTrace() {
   const type = inputType();
-  if (type !== "PeakValues" && !loaded[type]) {
+  if (type !== "PeakValues" && !filesOf(type).length) {
     lastTrace = null;
     redrawTrace();
     setStatus($("trace-status"), "Choose an input file to preview the velocity trace.");
@@ -194,7 +252,8 @@ function autoTrace() {
     redrawTrace();
     let peak = 0;
     for (const v of lastTrace.y) peak = Math.max(peak, Math.abs(v));
-    setStatus($("trace-status"), `Peak velocity = ${peak.toFixed(3)} rad/s`, "ok");
+    const which = isMulti() ? ` (preview of ${filesOf()[0].name}, 1 of ${filesOf().length} files)` : "";
+    setStatus($("trace-status"), `Peak velocity = ${peak.toFixed(3)} rad/s${which}`, "ok");
   } catch (e) {
     lastTrace = null;
     redrawTrace();
@@ -214,7 +273,7 @@ function resetForm() {
   $("peak-acc").value = 150000;
   $("peak-vel").value = 100;
   for (const id of ["file-vel", "file-acc", "file-peak"]) $(id).value = "";
-  for (const k of Object.keys(loaded)) loaded[k] = null;
+  for (const k of Object.keys(loaded)) loaded[k] = [];
   updateInputMode();
 }
 $("reset-form").addEventListener("click", resetForm);
@@ -229,30 +288,84 @@ $("load-example").addEventListener("click", () => {
 $("run").addEventListener("click", runPrediction);
 
 async function runPrediction() {
-  let cfg;
-  try { cfg = getCfg(); } catch (e) { toast(e.message, true); return; }
+  let cfgs;
+  try { cfgs = getCfgs(); } catch (e) { toast(e.message, true); return; }
+  const n = cfgs.length, runs = [];
   try {
-    busy("Reading or generating velocity trace…"); await tick();
-    const trace = getVelocityTrace(cfg);
-    lastTrace = trace; redrawTrace();
-    busy(`Loading ${modelLabel(cfg.modelType)} models (${cfg.direction})…`); await tick();
-    const res = await runSimulation(cfg, store, { spatial: true });
-    busy("Preparing result plots…"); await tick();
     const [dataset, centroids] = await Promise.all([getDataset(), getCentroids()]);
-    state.current = { cfg, res, dataset, centroids, png: null };
-    if (cfg.visual) {
-      busy("Loading 3D meshes…"); await tick();
-      state.current.meshes = await loadMeshes(fetchBuffer);
+    for (let i = 0; i < n; i++) {
+      const cfg = cfgs[i], tag = n > 1 ? `Simulation ${i + 1} of ${n} (${cfg.simulationId}): ` : "";
+      try {
+        busy(`${tag}reading or generating velocity trace…`); await tick();
+        const trace = getVelocityTrace(cfg);
+        if (i === 0) { lastTrace = trace; redrawTrace(); }
+        busy(`${tag}loading ${modelLabel(cfg.modelType)} models (${cfg.direction})…`); await tick();
+        const res = await runSimulation(cfg, store, { spatial: true });
+        runs.push({ id: cfg.simulationId, cur: { cfg, res, dataset, centroids, png: null } });
+      } catch (e) {
+        if (n === 1) throw e;
+        console.error(e);
+        runs.push({ id: cfg.simulationId, error: e.message });
+      }
     }
+    if (!runs.some((r) => r.cur)) throw new Error(runs.map((r) => `${r.id}: ${r.error}`).join("\n"));
+    if (cfgs[0].visual) {
+      busy("Loading 3D meshes…"); await tick();
+      const meshes = await loadMeshes(fetchBuffer);
+      runs.forEach((r) => { if (r.cur) r.cur.meshes = meshes; });
+    }
+    state.runs = runs;
     show("run");
     busy(null);
     await tick();
-    renderResults();
+    renderTabs();
+    selectRun(runs.findIndex((r) => r.cur));
   } catch (e) {
     busy(null);
     console.error(e);
     toast(`Backend Error: ${e.message}`, true, 9000);
   }
+}
+
+// ---------------------------------------------------------------- result tabs (several simulations)
+function renderTabs() {
+  const bar = $("run-tabs"), runs = state.runs;
+  bar.textContent = "";
+  bar.hidden = runs.length < 2;
+  $("download-all").hidden = runs.filter((r) => r.cur).length < 2;
+  runs.forEach((r, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "run-tab" + (r.cur ? "" : " failed"); b.setAttribute("role", "tab");
+    b.dataset.i = i; b.title = r.cur ? r.id : `${r.id}: failed`;
+    b.append(document.createTextNode(r.id));
+    if (r.cur && (r.cur.res.overall.MPS95_InjuryFlag || r.cur.res.overall.MAS95_InjuryFlag)) {
+      const dot = document.createElement("span");
+      dot.className = "dot"; dot.title = "Injury threshold exceeded";
+      b.appendChild(dot);
+    }
+    b.addEventListener("click", () => selectRun(i));
+    bar.appendChild(b);
+  });
+}
+function selectRun(i) {
+  const r = state.runs[i];
+  if (!r) return;
+  state.activeRun = i;
+  $$(".run-tab").forEach((b) => b.setAttribute("aria-selected", String(Number(b.dataset.i) === i)));
+  if (r.cur) {
+    state.current = r.cur;
+    renderResults();
+    return;
+  }
+  state.current = null;
+  $("run-body").hidden = true;
+  const empty = $("run-empty");
+  empty.hidden = false;
+  empty.textContent = "";
+  const t = document.createElement("div");
+  t.className = "run-error"; t.textContent = `${r.id} could not be run:\n${r.error}`;
+  empty.appendChild(t);
+  $("run-chip").textContent = `${r.id} · failed`;
 }
 
 // ---------------------------------------------------------------- results page
@@ -405,35 +518,60 @@ document.querySelectorAll("[data-report]").forEach((btn) => btn.addEventListener
   }
 }));
 
+/** Add one simulation's files (the current result, drawn in the viewers) to a zip. */
+async function addRunToZip(zip, cur) {
+  const { res, cfg, centroids } = cur;
+  const dir = zip.folder(res.folder);
+  const id = res.simulationId;
+  dir.file(`${id}_OverallPredictions.csv`, overallCSV(res));
+  dir.file(`${id}_SpatialMPS.csv`, spatialCSV("MPS", res.spatial.MPS, centroids));
+  dir.file(`${id}_SpatialMAS.csv`, spatialCSV("MAS", res.spatial.MAS, centroids));
+  dir.file(`${id}_VelocityTrace.csv`, traceCSV(res.trace));
+  dir.file(`${id}_InputSettings.json`, JSON.stringify({
+    simulationId: id, species: "Pig", inputType: cfg.inputType, direction: cfg.direction, modelType: cfg.modelType,
+    peakAcceleration: cfg.peakAcceleration, peakVelocity: cfg.peakVelocity, inputFile: cfg.fileName,
+    thresholds: { MPS95: MPS95_THRESHOLD, MAS95: MAS95_THRESHOLD },
+  }, null, 2));
+  if (cfg.visual && state.viewers.MPS && state.viewers.MAS) {
+    dir.file(`${id}_SpatialMPSPreview.png`, await spatialPNG("MPS"));
+    dir.file(`${id}_SpatialMASPreview.png`, await spatialPNG("MAS"));
+    dir.file(`${id}_RunResultsPage.png`, await resultsPagePNG());
+  }
+}
+const zipBlob = (zip) => zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } });
+
 $("download-zip").addEventListener("click", async () => {
   const cur = state.current;
   if (!cur) return;
   try {
     busy("Building ZIP…"); await tick();
-    const { res, cfg, centroids } = cur;
     const zip = new JSZip();
-    const dir = zip.folder(res.folder);
-    const id = res.simulationId;
-    dir.file(`${id}_OverallPredictions.csv`, overallCSV(res));
-    dir.file(`${id}_SpatialMPS.csv`, spatialCSV("MPS", res.spatial.MPS, centroids));
-    dir.file(`${id}_SpatialMAS.csv`, spatialCSV("MAS", res.spatial.MAS, centroids));
-    dir.file(`${id}_VelocityTrace.csv`, traceCSV(res.trace));
-    dir.file(`${id}_InputSettings.json`, JSON.stringify({
-      simulationId: id, species: "Pig", inputType: cfg.inputType, direction: cfg.direction, modelType: cfg.modelType,
-      peakAcceleration: cfg.peakAcceleration, peakVelocity: cfg.peakVelocity, inputFile: cfg.fileName,
-      thresholds: { MPS95: MPS95_THRESHOLD, MAS95: MAS95_THRESHOLD },
-    }, null, 2));
-    if (cfg.visual && state.viewers.MPS && state.viewers.MAS) {
-      dir.file(`${id}_SpatialMPSPreview.png`, await spatialPNG("MPS"));
-      dir.file(`${id}_SpatialMASPreview.png`, await spatialPNG("MAS"));
-      dir.file(`${id}_RunResultsPage.png`, await resultsPagePNG());
-    }
-    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } });
-    download(blob, `${res.folder}_results.zip`);
+    await addRunToZip(zip, cur);
+    download(await zipBlob(zip), `${cur.res.folder}_results.zip`);
     busy(null);
   } catch (e) {
     busy(null);
     toast(`Could not build ZIP: ${e.message}`, true, 8000);
+  }
+});
+
+$("download-all").addEventListener("click", async () => {
+  const keep = state.activeRun;
+  try {
+    const zip = new JSZip(), ok = state.runs.map((r, i) => [r, i]).filter(([r]) => r.cur);
+    for (let k = 0; k < ok.length; k++) {
+      busy(`Building ZIP: simulation ${k + 1} of ${ok.length}…`); await tick();
+      selectRun(ok[k][1]);   // the PNG previews come from the 3D views, so draw each simulation in turn
+      await tick();
+      await addRunToZip(zip, ok[k][0].cur);
+    }
+    download(await zipBlob(zip), `FEMML_Results_${stamp()}.zip`);
+    busy(null);
+  } catch (e) {
+    busy(null);
+    toast(`Could not build ZIP: ${e.message}`, true, 8000);
+  } finally {
+    selectRun(keep);
   }
 });
 
@@ -581,7 +719,10 @@ $("restart").addEventListener("click", () => {
   Object.values(state.viewers).forEach((v) => v.dispose());
   state.viewers = {};
   state.current = null;
+  state.runs = []; state.activeRun = 0;
+  $("run-tabs").hidden = true; $("download-all").hidden = true;
   $("run-body").hidden = true; $("run-empty").hidden = false; $("run-chip").textContent = "No results yet";
+  $("run-empty").innerHTML = "Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.";
   resetForm();
   show("species");
 });

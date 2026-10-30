@@ -105,13 +105,13 @@
             <legend>Impact Profile</legend>
             <label class="radio"><input type="radio" name="itype" value="VelocityTrace" checked> Angular Velocity Trace</label>
             <div class="sub" data-for="VelocityTrace">
-              <input type="file" id="file-vel" accept=".csv,text/csv">
-              <p class="hint">2 columns: <code>time_(s)</code>, <code>Angular_velocity_(rad/s)</code> · <a href="Templates/AngularVelocityTrace_Template.csv" download>template</a></p>
+              <input type="file" id="file-vel" accept=".csv,text/csv" multiple>
+              <p class="hint">2 columns: <code>time_(s)</code>, <code>Angular_velocity_(rad/s)</code> · <a href="Templates/AngularVelocityTrace_Template.csv" download>template</a> · select several files to run them all at once</p>
             </div>
             <label class="radio"><input type="radio" name="itype" value="AccelerationTrace"> Angular Acceleration Trace</label>
             <div class="sub" data-for="AccelerationTrace" hidden>
-              <input type="file" id="file-acc" accept=".csv,text/csv">
-              <p class="hint">2 columns: <code>time_(s)</code>, <code>Angular_Acceleration_(rad/s2)</code> · <a href="Templates/AngularAccelerationTrace_Template.csv" download>template</a></p>
+              <input type="file" id="file-acc" accept=".csv,text/csv" multiple>
+              <p class="hint">2 columns: <code>time_(s)</code>, <code>Angular_Acceleration_(rad/s2)</code> · <a href="Templates/AngularAccelerationTrace_Template.csv" download>template</a> · select several files to run them all at once</p>
             </div>
             <label class="radio"><input type="radio" name="itype" value="PeakValues"> Peak Values (Idealized Sinusoidal Profile)</label>
             <div class="sub" data-for="PeakValues" hidden>
@@ -119,13 +119,14 @@
                 <label class="field">Peak Accel. (rad/s²) <input id="peak-acc" type="number" min="0" step="any" value="150000"></label>
                 <label class="field">Peak Vel. (rad/s) <input id="peak-vel" type="number" min="0" step="any" value="100"></label>
               </div>
-              <p class="hint">Or load a one-row file: <input type="file" id="file-peak" accept=".csv,text/csv"> · <a href="Templates/PeakValues_Template.csv" download>template</a></p>
+              <p class="hint">Or load one-row files (several files run all at once): <input type="file" id="file-peak" accept=".csv,text/csv" multiple> · <a href="Templates/PeakValues_Template.csv" download>template</a></p>
             </div>
           </fieldset>
 
-          <label class="field" style="margin-top:.8rem">Simulation ID
+          <label class="field" id="sim-id-field" style="margin-top:.8rem">Simulation ID
             <input id="sim-id" type="text" value="SIM_001" autocomplete="off" spellcheck="false">
           </label>
+          <div id="sim-list" class="sim-list" hidden></div>
 
           <div class="inline">
             <label class="field">Impact Direction
@@ -190,7 +191,9 @@
           </div>
         </details>
         <button id="download-zip" class="primary">Download results (.zip)</button>
+        <button id="download-all" class="secondary" hidden>Download all (.zip)</button>
       </div>
+      <div id="run-tabs" class="run-tabs" role="tablist" aria-label="Simulations" hidden></div>
       <div id="run-empty" class="empty">Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.</div>
       <div id="run-body" hidden>
         <div id="range-warning" class="warning" hidden></div>
@@ -314,8 +317,9 @@
         <li>On <b>Species</b>, keep <b>Pig</b> selected (the only species available now) and continue.</li>
         <li>On <b>Input Parameters</b>, enter the Simulation ID, choose the input type and load the file or enter the peak values.</li>
         <li>Choose the impact direction, the model and the visual option. The velocity trace preview appears automatically once the input is valid; you can also press <b>load an example</b>.</li>
+        <li><b>Several files at once:</b> select up to 20 files in the file picker (all of the same input type). Each file becomes its own simulation, and its Simulation ID defaults to the file name, which you can edit in the list that appears. Direction, model and Visual apply to all of them.</li>
         <li>Press <b>Run Prediction</b>. The page moves to <b>Run / Results</b>.</li>
-        <li>Review the results, then use <b>Download results (.zip)</b> for the data files or <b>Download report</b> for an .html or .pdf summary.</li>
+        <li>Review the results, then use <b>Download results (.zip)</b> for the data files or <b>Download report</b> for an .html or .pdf summary. With several simulations there is one tab per Simulation ID (a red dot marks an exceeded injury threshold, and a red tab marks a file that failed). The download buttons apply to the open tab, and <b>Download all (.zip)</b> gives one folder per simulation.</li>
       </ol>
 
       <h3 id="ins-batch">Running batch mode</h3>
