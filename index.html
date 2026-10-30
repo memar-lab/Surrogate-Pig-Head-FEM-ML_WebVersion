@@ -271,7 +271,7 @@
       </ul>
 
       <h3 id="ins-inputs">How to provide inputs: input options and units</h3>
-      <p>Three input types are supported. Whatever you choose, it is converted into an angular velocity trace before the 15 kinematic features are extracted. For one run, select one input type. In a batch, every CSV file must use the same input type. Keep the column names exactly as in the templates (download them from the Input Parameters page, or from the <a href="Templates/">Templates</a> folder).</p>
+      <p>Three input types are supported. Whatever you choose, it is converted into an angular velocity trace before the 15 kinematic features are extracted. For one run, select one input type. In a batch, every CSV file must use the same input type. Keep the column names exactly as in the templates (downloadable links are in the batch steps below and on the Input Parameters page).</p>
       <table class="ins-table">
         <tr><th>Input type</th><th>CSV columns</th><th>Units</th></tr>
         <tr><td><b>VelocityTrace</b><br>Angular velocity trace</td><td><code>time_(s)</code><br><code>Angular_velocity_(rad/s)</code></td><td>s, rad/s</td></tr>
@@ -321,9 +321,15 @@
       <h3 id="ins-batch">Running batch mode</h3>
       <p>Batch mode runs a whole set of CSV files with the same input type, impact direction and model. It runs in your browser; nothing is uploaded.</p>
       <ol>
+        <li>Prepare one CSV per simulation from the template that matches your input type (download it here), and keep the column names unchanged:
+          <ul>
+            <li>Angular velocity traces (<b>VelocityTrace</b>): <a href="Templates/AngularVelocityTrace_Template.csv" download>AngularVelocityTrace_Template.csv</a></li>
+            <li>Angular acceleration traces (<b>AccelerationTrace</b>): <a href="Templates/AngularAccelerationTrace_Template.csv" download>AngularAccelerationTrace_Template.csv</a></li>
+            <li>Peak acceleration and peak velocity only (<b>PeakValues</b>, one row per file): <a href="Templates/PeakValues_Template.csv" download>PeakValues_Template.csv</a></li>
+          </ul>
+          Save each simulation under its own name (for example <code>SIM_001.csv</code>); files with <code>template</code> in the name are skipped.</li>
         <li>Open the <b>Batch</b> page and choose the <b>Input Type</b>, <b>Impact Direction</b> and <b>Model Architecture</b> that apply to every file.</li>
-        <li>Drop the CSV files on the drop zone or pick several at once. To try it first, press <b>use the 3 example files</b> (peak-value inputs; the same files are in <a href="ExampleBatchFolder/SIM_001.csv">ExampleBatchFolder</a>).</li>
-        <li>Optionally untick <b>Include spatial MPS / MAS CSVs</b> for a fast summary-only run (spatial files are about 5 MB each per simulation).</li>
+        <li>Drop the CSV files on the drop zone or pick several at once.</li>
         <li>Press <b>Run batch</b> and watch the progress bar. A table of results appears at the end.</li>
         <li>Press <b>Download batch results (.zip)</b>.</li>
       </ol>
