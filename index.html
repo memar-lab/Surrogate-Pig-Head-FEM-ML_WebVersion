@@ -163,6 +163,7 @@
             <h3>Velocity Trace Preview</h3>
           </div>
           <canvas id="trace-canvas" class="plot" height="280"></canvas>
+          <div id="trace-legend" class="trace-legend" hidden></div>
           <p id="trace-status" class="status muted">Choose an input file to preview the velocity trace.</p>
           <p class="hint">Try it: <button class="link" id="load-example">load an example</button> (peak accel. 150,000 rad/s², peak vel. 100 rad/s).</p>
         </div>
@@ -170,8 +171,10 @@
 
       <div class="actions">
         <button id="reset-form" class="ghost">Reset</button>
+        <button id="batch-toggle" class="toggle" type="button" aria-pressed="false" title="Run many files without plots or 3D views and save the results straight to a folder">Batch mode: Off</button>
         <button id="run" class="primary">Run Prediction</button>
       </div>
+      <p id="batch-hint" class="hint batch-hint" hidden>Batch mode: no plots or 3D views are drawn. When you press <b>Run Batch</b> you choose an output folder and the results are written there directly (a summary table is shown here). If your browser cannot save to a folder, one .zip is downloaded instead. If the browser refuses a folder such as Documents or Downloads, pick or create a sub-folder.</p>
     </div>
   </section>
 
@@ -194,6 +197,11 @@
         <button id="download-all" class="secondary" hidden>Download all (.zip)</button>
       </div>
       <div id="run-tabs" class="run-tabs" role="tablist" aria-label="Simulations" hidden></div>
+      <div id="batch-panel" hidden>
+        <p id="bp-status" class="status muted"></p>
+        <progress id="bp-progress" value="0" max="1"></progress>
+        <div class="table-wrap"><table id="bp-table" class="res-table"></table></div>
+      </div>
       <div id="run-empty" class="empty">Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.</div>
       <div id="run-body" hidden>
         <div id="range-warning" class="warning" hidden></div>
@@ -318,6 +326,8 @@
         <li>On <b>Input Parameters</b>, enter the Simulation ID, choose the input type and load the file or enter the peak values.</li>
         <li>Choose the impact direction, the model and the visual option. The velocity trace preview appears automatically once the input is valid; you can also press <b>load an example</b>.</li>
         <li><b>Several files at once:</b> select up to 20 files in the file picker (all of the same input type). Each file becomes its own simulation, and its Simulation ID defaults to the file name, which you can edit in the list that appears. Direction, model and Visual apply to all of them.</li>
+        <li>A velocity trace preview shows every selected file in its own colour; click a name (in the list or under the plot) to highlight that trace. The <b>×</b> button next to a file removes it from the run.</li>
+        <li>Selecting more than 10 files suggests <b>Batch mode</b> (the button next to Run). In batch mode no plots or 3D views are drawn: you choose an output folder, the results are written there directly, and a table shows SimulationID, Status (Injured / Not Injured), MPS95, MAS95, the two flags and a message. Batch mode has no 20-file limit. Browsers that cannot save to a folder download one .zip instead.</li>
         <li>Press <b>Run Prediction</b>. The page moves to <b>Run / Results</b>.</li>
         <li>Review the results, then use <b>Download results (.zip)</b> for the data files or <b>Download report</b> for an .html or .pdf summary. With several simulations there is one tab per Simulation ID (a red dot marks an exceeded injury threshold, and a red tab marks a file that failed). The download buttons apply to the open tab, and <b>Download all (.zip)</b> gives one folder per simulation.</li>
       </ol>
@@ -414,6 +424,17 @@ MAS95_InjuryFlag = MAS95 ≥ 0.13</pre>
     </div>
   </section>
 </main>
+
+<dialog id="batch-suggest" class="dlg">
+  <form method="dialog">
+    <h3>Many files selected</h3>
+    <p id="bs-text"></p>
+    <div class="actions">
+      <button value="keep" class="ghost">Keep regular mode</button>
+      <button value="batch" class="primary">Use batch mode</button>
+    </div>
+  </form>
+</dialog>
 
 <div id="busy" class="busy" hidden><div class="busy-box"><div class="spinner"></div><p id="busy-msg">Working…</p></div></div>
 <div id="toast" class="toast" role="status" hidden></div>

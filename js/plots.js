@@ -8,6 +8,7 @@ const LIGHT = {
   dot: "rgba(140,146,156,0.65)", dotLegend: "rgba(140,146,156,0.9)", legendBg: "rgba(255,255,255,0.9)",
   user: "#e11d1d", userEdge: "#500000", track: "#eceff3", marker: "#111827",
   red: "#d92d20", green: "#12a150",
+  series: ["#0a66e6", "#e8590c", "#2f9e44", "#ae3ec9", "#c2255c", "#0c8599", "#a8780a", "#5c7cfa", "#d6336c", "#3b5b2a"],
   badBg: "#fee4e2", badInk: "#b42318", okBg: "#dcfae6", okInk: "#067647",
 };
 const DARK = {
@@ -15,6 +16,7 @@ const DARK = {
   dot: "rgba(148,163,184,0.55)", dotLegend: "rgba(148,163,184,0.9)", legendBg: "rgba(15,23,42,0.88)",
   user: "#ff4d6d", userEdge: "#ffffff", track: "#1c2a40", marker: "#e6ebf2",
   red: "#f87171", green: "#34d399",
+  series: ["#5eb0ff", "#ffa94d", "#69db7c", "#da77f2", "#ff8787", "#3bc9db", "#ffd43b", "#91a7ff", "#faa2c1", "#b2f2bb"],
   badBg: "rgba(248,113,113,0.16)", badInk: "#fca5a5", okBg: "rgba(52,211,153,0.16)", okInk: "#6ee7b7",
 };
 let forceLight = false;
@@ -89,17 +91,12 @@ function axes(ctx, r, xr, yr, xlabel, ylabel, title, grid = true, topExtra = 0) 
   return { X, Y, px, py, pw, ph };
 }
 
-export function drawTrace(ctx, r, trace) {
-  const t = trace.t, y = trace.y;
-  let ymin = Infinity, ymax = -Infinity;
-  for (const v of y) { if (v < ymin) ymin = v; if (v > ymax) ymax = v; }
-  if (ymin === ymax) { ymin -= 1; ymax += 1; }
-  const padY = (ymax - ymin) * 0.06;
-  const a = axes(ctx, r, [t[0], t[t.length - 1]], [Math.min(0, ymin - padY), ymax + padY], "Time (s)", "Angular velocity (rad/s)", "Generated velocity trace");
-  ctx.save();
-  ctx.beginPath(); ctx.rect(a.px, a.py, a.pw, a.ph); ctx.clip();
-  ctx.strokeStyle = pal().line; ctx.lineWidth = 1.6; ctx.beginPath();
-  // decimate to ~2 points per pixel; keep min/max per bucket so peaks survive
+/** Colour of the i-th simulation in the multi-trace preview (follows the page theme). */
+export const seriesColor = (i) => pal().series[i % pal().series.length];
+
+/** Stroke one velocity trace inside the plot area, decimated to ~2 points per pixel (min/max kept per bucket). */
+function strokeTrace(ctx, a, t, y) {
+  ctx.beginPath();
   const buckets = Math.max(1, Math.floor(a.pw));
   if (t.length <= buckets * 2) {
     for (let i = 0; i < t.length; i++) (i ? ctx.lineTo : ctx.moveTo).call(ctx, a.X(t[i]), a.Y(y[i]));
@@ -113,6 +110,43 @@ export function drawTrace(ctx, r, trace) {
     }
   }
   ctx.stroke();
+}
+
+/** Several velocity traces on one set of axes, each in its own colour; the active one is drawn thick, the others faded. traces: [{t, y, idx}] */
+export function drawTraces(ctx, r, traces, active) {
+  let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+  for (const { t, y } of traces) {
+    xmin = Math.min(xmin, t[0]); xmax = Math.max(xmax, t[t.length - 1]);
+    for (const v of y) { if (v < ymin) ymin = v; if (v > ymax) ymax = v; }
+  }
+  if (ymin === ymax) { ymin -= 1; ymax += 1; }
+  const padY = (ymax - ymin) * 0.06;
+  const a = axes(ctx, r, [xmin, xmax], [Math.min(0, ymin - padY), ymax + padY], "Time (s)", "Angular velocity (rad/s)", `Generated velocity traces (${traces.length})`);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(a.px, a.py, a.pw, a.ph); ctx.clip();
+  ctx.lineJoin = "round";
+  const ordered = [...traces.filter((tr) => tr.idx !== active), ...traces.filter((tr) => tr.idx === active)];
+  for (const tr of ordered) {
+    const on = tr.idx === active;
+    ctx.strokeStyle = seriesColor(tr.idx);
+    ctx.globalAlpha = on ? 1 : 0.4;
+    ctx.lineWidth = on ? 2.6 : 1.2;
+    strokeTrace(ctx, a, tr.t, tr.y);
+  }
+  ctx.restore();
+}
+
+export function drawTrace(ctx, r, trace) {
+  const t = trace.t, y = trace.y;
+  let ymin = Infinity, ymax = -Infinity;
+  for (const v of y) { if (v < ymin) ymin = v; if (v > ymax) ymax = v; }
+  if (ymin === ymax) { ymin -= 1; ymax += 1; }
+  const padY = (ymax - ymin) * 0.06;
+  const a = axes(ctx, r, [t[0], t[t.length - 1]], [Math.min(0, ymin - padY), ymax + padY], "Time (s)", "Angular velocity (rad/s)", "Generated velocity trace");
+  ctx.save();
+  ctx.beginPath(); ctx.rect(a.px, a.py, a.pw, a.ph); ctx.clip();
+  ctx.strokeStyle = pal().line; ctx.lineWidth = 1.6;
+  strokeTrace(ctx, a, t, y);
   ctx.restore();
 }
 

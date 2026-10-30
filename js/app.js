@@ -9,7 +9,7 @@ import { csvRow } from "./pyfmt.js";
 import { DirectionView, DIRECTION_TEXT } from "./dirview.js";
 import { buildReportHTML, drawReportPage, pageCanvasToPDF } from "./report.js";
 import { SpatialViewer, loadMeshes, loadBrainMesh, MPS_RANGE, MAS_RANGE } from "./viewer3d.js";
-import { prepCanvas, drawTrace, drawDataset, drawOverall, drawColorbar, withLightTheme } from "./plots.js";
+import { prepCanvas, drawTrace, drawTraces, seriesColor, drawDataset, drawOverall, drawColorbar, withLightTheme } from "./plots.js";
 
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -66,7 +66,7 @@ function stamp() {
 const fmt6 = (v) => v.toFixed(6);
 
 // ---------------------------------------------------------------- navigation
-const state = { species: "Pig", current: null, runs: [], activeRun: 0, viewers: {}, page: "species" };
+const state = { species: "Pig", current: null, runs: [], activeRun: 0, viewers: {}, page: "species", batchView: false };
 function show(page) {
   state.page = page;
   $$(".page").forEach((p) => (p.hidden = p.id !== `page-${page}`));
@@ -80,9 +80,13 @@ $$("[data-goto]").forEach((b) => b.addEventListener("click", () => show(b.datase
 $("to-input").addEventListener("click", () => show("input"));
 
 // ---------------------------------------------------------------- input form
-const MAX_FILES = 20;
+const MAX_FILES = 20; // regular mode; batch mode has no limit
 const loaded = { VelocityTrace: [], AccelerationTrace: [], PeakValues: [] }; // [{name, text, id}]
-let lastTrace = null;
+let lastTraces = [];      // [{idx, t, y}] previews of the selected files (first MAX_PREVIEW)
+let previewIdx = 0;       // file whose trace is highlighted
+let previewErrors = [];
+const MAX_PREVIEW = 50;
+let batchMode = false;
 
 const inputType = () => document.querySelector('input[name="itype"]:checked').value;
 const filesOf = (type = inputType()) => loaded[type] || [];
@@ -117,16 +121,44 @@ function renderSimList() {
   box.appendChild(head);
   filesOf().forEach((f, i) => {
     const row = document.createElement("div");
-    row.className = "sim-row";
+    row.className = "sim-row" + (i === previewIdx ? " sel" : "");
     const name = document.createElement("span");
-    name.className = "sim-file"; name.textContent = f.name; name.title = f.name;
+    name.className = "sim-file"; name.title = `${f.name} (click to highlight its trace)`;
+    if (i < MAX_PREVIEW) {
+      const sw = document.createElement("span");
+      sw.className = "sw"; sw.style.background = seriesColor(i);
+      name.appendChild(sw);
+    }
+    name.append(document.createTextNode(f.name));
+    name.addEventListener("click", () => selectPreview(i));
     const input = document.createElement("input");
     input.type = "text"; input.value = f.id; input.autocomplete = "off"; input.spellcheck = false;
     input.setAttribute("aria-label", `Simulation ID for ${f.name}`);
     input.addEventListener("input", () => { f.id = input.value; });
-    row.append(name, input);
+    const del = document.createElement("button");
+    del.type = "button"; del.className = "del"; del.textContent = "×";
+    del.title = `Remove ${f.name} from this run`; del.setAttribute("aria-label", del.title);
+    del.addEventListener("click", () => removeFile(i));
+    row.append(name, input, del);
     box.appendChild(row);
   });
+}
+
+/** Drop one selected file (picked by mistake) and refresh the list, the preview and the single-ID field. */
+function removeFile(i) {
+  const type = inputType();
+  loaded[type].splice(i, 1);
+  previewIdx = Math.max(0, Math.min(previewIdx > i ? previewIdx - 1 : previewIdx, loaded[type].length - 1));
+  if (type === "PeakValues" && loaded[type].length === 1) {
+    try {
+      const p = readPeakValuesCSV(loaded[type][0].text);
+      $("peak-acc").value = p.peakAcceleration;
+      $("peak-vel").value = p.peakVelocity;
+    } catch (e) { toast(e.message, true); }
+  }
+  setDefaultSimId(true);
+  renderSimList();
+  autoTrace();
 }
 
 function updateInputMode() {
@@ -140,11 +172,13 @@ $$('input[name="itype"]').forEach((r) => r.addEventListener("change", updateInpu
 
 async function readFileInto(input, key) {
   let list = Array.from(input.files || []);
-  if (list.length > MAX_FILES) {
-    toast(`Only the first ${MAX_FILES} files are used. Use the Batch page for larger sets.`, true);
+  input.value = ""; // so the same files can be picked again after removing some
+  if (!batchMode && list.length > MAX_FILES) {
+    toast(`Only the first ${MAX_FILES} files are used. Turn on Batch mode to run more.`, true);
     list = list.slice(0, MAX_FILES);
   }
   loaded[key] = await Promise.all(list.map(async (f) => ({ name: f.name, text: await f.text(), id: fileBaseName(f.name) })));
+  previewIdx = 0;
   if (key === "PeakValues" && loaded[key].length) {
     try {
       const p = readPeakValuesCSV(loaded[key][0].text);
@@ -155,6 +189,7 @@ async function readFileInto(input, key) {
   setDefaultSimId(true);
   renderSimList();
   autoTrace();
+  if (!batchMode && loaded[key].length > 10) suggestBatch(loaded[key].length);
 }
 $("file-vel").addEventListener("change", (e) => readFileInto(e.target, "VelocityTrace"));
 $("file-acc").addEventListener("change", (e) => readFileInto(e.target, "AccelerationTrace"));
@@ -191,16 +226,25 @@ function getCfg(forTrace = false, idx = 0) {
   return cfg;
 }
 /** All simulations to run; Simulation IDs must be unique. */
-function getCfgs() {
+function getCfgs(lenient = false) {
   const n = isMulti() ? filesOf().length : 1;
-  const cfgs = Array.from({ length: n }, (_, i) => getCfg(false, i));
+  const failed = [];
+  const cfgs = [];
+  for (let i = 0; i < n; i++) {
+    try { cfgs.push(getCfg(false, i)); }
+    catch (e) {
+      if (!lenient) throw e;
+      const f = filesOf()[i];
+      failed.push({ i, id: (isMulti() ? f.id : $("sim-id").value).trim() || (f ? fileBaseName(f.name) : "SIM"), file: f ? f.name : "", error: e.message });
+    }
+  }
   const seen = new Set();
   for (const c of cfgs) {
     const key = c.simulationId.toLowerCase();
     if (seen.has(key)) throw new Error(`Simulation ID "${c.simulationId}" is used more than once. Give every simulation its own ID.`);
     seen.add(key);
   }
-  return cfgs;
+  return lenient ? { cfgs, failed } : cfgs;
 }
 
 function redrawTrace() {
@@ -208,7 +252,8 @@ function redrawTrace() {
   if (!canvas.offsetParent) return;
   const { ctx, w, h } = prepCanvas(canvas);
   ctx.clearRect(0, 0, w, h);
-  if (lastTrace) drawTrace(ctx, { x: 0, y: 0, w, h }, lastTrace);
+  if (lastTraces.length > 1) drawTraces(ctx, { x: 0, y: 0, w, h }, lastTraces, previewIdx);
+  else if (lastTraces.length === 1) drawTrace(ctx, { x: 0, y: 0, w, h }, lastTraces[0]);
   else {
     ctx.fillStyle = "#9aa3af"; ctx.font = "13px system-ui, sans-serif"; ctx.textAlign = "center";
     ctx.fillText("No trace to show yet", w / 2, h / 2);
@@ -221,7 +266,7 @@ $("theme-toggle").addEventListener("click", () => {
   const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
   document.documentElement.dataset.theme = next;
   try { localStorage.setItem("theme", next); } catch (e) { /* storage unavailable */ }
-  redrawTrace();
+  redrawTrace(); renderLegend(); renderSimList();
   if (state.current && !$("run-body").hidden) drawRunPlots();
   Object.values(state.viewers).forEach((v) => v.setTheme(next === "dark"));
   if (dirView) dirView.setTheme(next === "dark");
@@ -240,24 +285,55 @@ updateDirectionPicture();
 
 /** Rebuild the velocity-trace preview from the current input (called whenever the input changes). */
 function autoTrace() {
-  const type = inputType();
-  if (type !== "PeakValues" && !filesOf(type).length) {
-    lastTrace = null;
-    redrawTrace();
+  const type = inputType(), files = filesOf(type);
+  lastTraces = []; previewErrors = [];
+  if (type !== "PeakValues" && !files.length) {
+    redrawTrace(); renderLegend();
     setStatus($("trace-status"), "Choose an input file to preview the velocity trace.");
     return;
   }
-  try {
-    lastTrace = getVelocityTrace(getCfg(true));
-    redrawTrace();
-    let peak = 0;
-    for (const v of lastTrace.y) peak = Math.max(peak, Math.abs(v));
-    const which = isMulti() ? ` (preview of ${filesOf()[0].name}, 1 of ${filesOf().length} files)` : "";
-    setStatus($("trace-status"), `Peak velocity = ${peak.toFixed(3)} rad/s${which}`, "ok");
-  } catch (e) {
-    lastTrace = null;
-    redrawTrace();
-    setStatus($("trace-status"), e.message, "err");
+  const n = isMulti() ? Math.min(files.length, MAX_PREVIEW) : 1;
+  for (let i = 0; i < n; i++) {
+    try {
+      const tr = getVelocityTrace(getCfg(true, i));
+      lastTraces.push({ idx: i, t: tr.t, y: tr.y });
+    } catch (e) { previewErrors.push(isMulti() ? `${files[i].name}: ${e.message}` : e.message); }
+  }
+  if (previewIdx >= n) previewIdx = 0;
+  showPreview();
+}
+function selectPreview(i) {
+  previewIdx = i;
+  showPreview();
+}
+/** Draw the traces, the colour legend, the highlighted list row and the status line. */
+function showPreview() {
+  redrawTrace();
+  renderLegend();
+  $$(".sim-row").forEach((r, i) => r.classList.toggle("sel", i === previewIdx));
+  const act = lastTraces.find((t) => t.idx === previewIdx) || lastTraces[0];
+  if (!act) { setStatus($("trace-status"), previewErrors[0] || "No trace to show.", "err"); return; }
+  let peak = 0;
+  for (const v of act.y) peak = Math.max(peak, Math.abs(v));
+  let msg = `Peak velocity = ${peak.toFixed(3)} rad/s`;
+  if (isMulti()) msg += ` (${filesOf()[act.idx].id}; click a name to highlight another trace)`;
+  if (isMulti() && filesOf().length > MAX_PREVIEW) msg += ` · previewing the first ${MAX_PREVIEW} of ${filesOf().length} files`;
+  if (previewErrors.length) msg += ` · ${previewErrors.length} could not be previewed: ${previewErrors[0]}`;
+  setStatus($("trace-status"), msg, previewErrors.length ? "err" : "ok");
+}
+function renderLegend() {
+  const box = $("trace-legend");
+  box.textContent = "";
+  box.hidden = lastTraces.length < 2;
+  if (box.hidden) return;
+  for (const tr of lastTraces) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "leg"; b.setAttribute("aria-pressed", String(tr.idx === previewIdx));
+    const sw = document.createElement("span");
+    sw.className = "sw"; sw.style.background = seriesColor(tr.idx);
+    b.append(sw, document.createTextNode(filesOf()[tr.idx].id));
+    b.addEventListener("click", () => selectPreview(tr.idx));
+    box.appendChild(b);
   }
 }
 let traceTimer = null;
@@ -265,6 +341,8 @@ for (const id of ["peak-acc", "peak-vel"]) $(id).addEventListener("input", () =>
 
 function resetForm() {
   idEdited = false;
+  previewIdx = 0;
+  setBatchMode(false);
   document.querySelector('input[name="itype"][value="VelocityTrace"]').checked = true;
   $("direction").value = "Sagittal";
   updateDirectionPicture();
@@ -288,6 +366,7 @@ $("load-example").addEventListener("click", () => {
 $("run").addEventListener("click", runPrediction);
 
 async function runPrediction() {
+  if (batchMode) return runBatchMode();
   let cfgs;
   try { cfgs = getCfgs(); } catch (e) { toast(e.message, true); return; }
   const n = cfgs.length, runs = [];
@@ -298,7 +377,6 @@ async function runPrediction() {
       try {
         busy(`${tag}reading or generating velocity trace…`); await tick();
         const trace = getVelocityTrace(cfg);
-        if (i === 0) { lastTrace = trace; redrawTrace(); }
         busy(`${tag}loading ${modelLabel(cfg.modelType)} models (${cfg.direction})…`); await tick();
         const res = await runSimulation(cfg, store, { spatial: true });
         runs.push({ id: cfg.simulationId, cur: { cfg, res, dataset, centroids, png: null } });
@@ -315,6 +393,7 @@ async function runPrediction() {
       runs.forEach((r) => { if (r.cur) r.cur.meshes = meshes; });
     }
     state.runs = runs;
+    setRunMode(false);
     show("run");
     busy(null);
     await tick();
@@ -324,6 +403,165 @@ async function runPrediction() {
     busy(null);
     console.error(e);
     toast(`Backend Error: ${e.message}`, true, 9000);
+  }
+}
+
+// ---------------------------------------------------------------- batch mode on the input page
+function setBatchMode(on) {
+  batchMode = on;
+  const t = $("batch-toggle");
+  t.setAttribute("aria-pressed", String(on));
+  t.textContent = `Batch mode: ${on ? "On" : "Off"}`;
+  $("run").textContent = on ? "Run Batch" : "Run Prediction";
+  $("visual").disabled = on;
+  $("batch-hint").hidden = !on;
+}
+$("batch-toggle").addEventListener("click", () => setBatchMode(!batchMode));
+
+function suggestBatch(n) {
+  $("bs-text").textContent = `You selected ${n} files. Batch mode is better suited for this many: it skips the plots and 3D views, saves the results straight to a folder you choose and shows a summary table. Turn it on?`;
+  const dlg = $("batch-suggest");
+  if (typeof dlg.showModal !== "function") { toast(`${n} files selected. Consider turning on Batch mode.`); return; }
+  dlg.returnValue = "";
+  dlg.showModal();
+}
+$("batch-suggest").addEventListener("close", () => { if ($("batch-suggest").returnValue === "batch") setBatchMode(true); });
+
+/** Show the summary table (batch mode) or the normal results (regular mode) on the Run / Results page. */
+function setRunMode(batchView) {
+  state.batchView = batchView;
+  for (const id of ["reset-views", "report-menu", "download-zip"]) $(id).hidden = batchView;
+  $("batch-panel").hidden = !batchView;
+  if (batchView) for (const id of ["run-body", "run-empty", "run-tabs", "download-all"]) $(id).hidden = true;
+}
+
+/** Where batch results go: straight into a folder the user picks, or (browsers without folder access) one zip. */
+async function openSink() {
+  const ts = stamp();
+  if (typeof window.showDirectoryPicker === "function") {
+    const root = await window.showDirectoryPicker({ mode: "readwrite" });
+    return {
+      ts, label: `the folder "${root.name}"`,
+      async write(path, data) {
+        const parts = path.split("/");
+        let dir = root;
+        for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create: true });
+        const w = await (await dir.getFileHandle(parts[parts.length - 1], { create: true })).createWritable();
+        await w.write(data);
+        await w.close();
+      },
+      async finish() {},
+    };
+  }
+  toast("This browser cannot save to a folder, so the results will be downloaded as one .zip instead.", false, 7000);
+  const zip = new JSZip();
+  return { ts, label: "the downloaded .zip", async write(path, data) { zip.file(path, data); }, async finish() { download(await zipBlob(zip), `FEMML_BatchResults_${ts}.zip`); } };
+}
+
+function summaryCSV(rows) {
+  let out = csvRow(BATCH_SUMMARY_HEADER);
+  for (const r of rows) {
+    out += csvRow([r.SimulationID, r.InputFile, r.Status, r.ErrorMessage, r.MPS95 === "" ? "" : fmt6(r.MPS95), r.MAS95 === "" ? "" : fmt6(r.MAS95), r.f1, r.f2, r.folder, r.overall, r.smps, r.smas]);
+  }
+  return out;
+}
+
+function addResultRow(tbl, r, message) {
+  const tr = tbl.insertRow();
+  const cell = (text, cls) => { const c = tr.insertCell(); c.textContent = text; if (cls) c.className = cls; return c; };
+  const failed = r.Status === "FAILED", injured = r.f1 === 1 || r.f2 === 1;
+  cell(r.SimulationID);
+  cell(failed ? "Failed" : injured ? "Injured" : "Not Injured", failed ? "st-fail" : injured ? "st-injured" : "st-ok");
+  cell(failed ? "" : Number(r.MPS95).toFixed(4), "num");
+  cell(failed ? "" : Number(r.MAS95).toFixed(4), "num");
+  cell(failed ? "" : r.f1 ? "Yes" : "No");
+  cell(failed ? "" : r.f2 ? "Yes" : "No");
+  cell(message, "msg");
+}
+
+/** Batch mode: no plots, no 3D, no big arrays kept; every simulation is written out as soon as it is done. */
+async function runBatchMode() {
+  let cfgs, bad;
+  try { ({ cfgs, failed: bad } = getCfgs(true)); } catch (e) { toast(e.message, true); return; }
+  if (!cfgs.length && !bad.length) return;
+  let sink;
+  try { sink = await openSink(); } // must be the first await: the folder picker needs the click's permission
+  catch (e) {
+    if (e.name !== "AbortError") toast(`Could not open the output folder: ${e.message}`, true, 8000);
+    return;
+  }
+  const n = cfgs.length + bad.length, rows = [], log = [], used = new Set();
+  $("run").disabled = true;
+  state.current = null; state.runs = [];
+  setRunMode(true);
+  show("run");
+  const dirName = $("direction").value, modelName = $("model").value;
+  $("run-chip").textContent = `Batch · ${n} simulation${n === 1 ? "" : "s"} · ${dirName} · ${modelLabel(modelName)}`;
+  const tbl = $("bp-table"), prog = $("bp-progress"), status = $("bp-status");
+  tbl.textContent = "";
+  const head = tbl.insertRow();
+  for (const c of ["SimulationID", "Status", "MPS95", "MAS95", "MPS95 flag", "MAS95 flag", "Message"]) head.insertCell().outerHTML = `<th>${c}</th>`;
+  prog.max = n; prog.value = 0;
+  let ok = 0;
+  try {
+    setStatus(status, `Loading ${modelLabel(modelName)} models (${dirName})…`);
+    let centroids = null;
+    if (cfgs.length) {
+      await store.loadOverall(modelName, dirName);
+      await store.loadSpatial(modelName, dirName);
+      centroids = await getCentroids();
+    }
+    log.push(`Memar Lab batch run  ${new Date().toISOString()}`, `Input type   : ${inputType()}`, `Direction    : ${dirName}`, `Model type   : ${modelName}`, `Simulations  : ${n}`, "");
+    for (const b of bad) {
+      let id = safeFolderName(b.id);
+      while (used.has(id)) id += "_2";
+      used.add(id);
+      const row = { SimulationID: b.id, InputFile: b.file, Status: "FAILED", ErrorMessage: b.error, MPS95: "", MAS95: "", f1: "", f2: "", folder: "", overall: "", smps: "", smas: "" };
+      log.push(`FAIL  ${id.padEnd(24)} ${b.error}`);
+      rows.push(row);
+      addResultRow(tbl, row, b.error);
+    }
+    prog.value = bad.length;
+    for (let i = 0; i < cfgs.length; i++) {
+      const cfg = cfgs[i];
+      let id = safeFolderName(cfg.simulationId);
+      while (used.has(id)) id += "_2";
+      used.add(id);
+      setStatus(status, `Running ${bad.length + i + 1} of ${n}: ${cfg.simulationId}`);
+      await tick();
+      const row = { SimulationID: cfg.simulationId, InputFile: cfg.fileName || "", Status: "OK", ErrorMessage: "", MPS95: "", MAS95: "", f1: "", f2: "", folder: id, overall: "", smps: "", smas: "" };
+      let message;
+      try {
+        const res = await runSimulation({ ...cfg, simulationId: id }, store, { spatial: true });
+        await sink.write(`${id}/${id}_OverallPredictions.csv`, overallCSV(res));
+        await sink.write(`${id}/${id}_SpatialMPS.csv`, spatialCSV("MPS", res.spatial.MPS, centroids));
+        await sink.write(`${id}/${id}_SpatialMAS.csv`, spatialCSV("MAS", res.spatial.MAS, centroids));
+        row.overall = `${id}/${id}_OverallPredictions.csv`; row.smps = `${id}/${id}_SpatialMPS.csv`; row.smas = `${id}/${id}_SpatialMAS.csv`;
+        row.MPS95 = res.overall.MPS95; row.MAS95 = res.overall.MAS95;
+        row.f1 = res.overall.MPS95_InjuryFlag ? 1 : 0; row.f2 = res.overall.MAS95_InjuryFlag ? 1 : 0;
+        message = `Saved in ${id}/`;
+        ok++;
+        log.push(`OK    ${id.padEnd(24)} MPS95=${res.overall.MPS95.toFixed(4)}  MAS95=${res.overall.MAS95.toFixed(4)}`);
+      } catch (e) {
+        console.error(e);
+        row.Status = "FAILED"; row.ErrorMessage = e.message; row.folder = "";
+        message = e.message;
+        log.push(`FAIL  ${id.padEnd(24)} ${e.message}`);
+      }
+      rows.push(row);
+      addResultRow(tbl, row, message);
+      prog.value = bad.length + i + 1;
+    }
+    log.push("", `Done. ${ok} of ${n} succeeded.`);
+    await sink.write(`_BatchSummaries/BatchSummary_${sink.ts}.csv`, summaryCSV(rows));
+    await sink.write("batch_log.txt", log.join("\n") + "\n");
+    await sink.finish();
+    setStatus(status, `Done. ${ok} of ${n} succeeded. Results were saved to ${sink.label}.`, ok === n ? "ok" : "err");
+  } catch (e) {
+    console.error(e);
+    setStatus(status, `Batch stopped: ${e.message}`, "err");
+  } finally {
+    $("run").disabled = false;
   }
 }
 
@@ -668,10 +906,7 @@ async function runBatch() {
       prog.value = i + 1;
     }
     log.push("", `Done. ${ok} of ${files.length} succeeded.`);
-    let summary = csvRow(BATCH_SUMMARY_HEADER);
-    for (const r of rows) {
-      summary += csvRow([r.SimulationID, r.InputFile, r.Status, r.ErrorMessage, r.MPS95 === "" ? "" : fmt6(r.MPS95), r.MAS95 === "" ? "" : fmt6(r.MAS95), r.f1, r.f2, r.folder, r.overall, r.smps, r.smas]);
-    }
+    const summary = summaryCSV(rows);
     zip.file(`_BatchSummaries/BatchSummary_${ts}.csv`, summary);
     zip.file("batch_log.txt", log.join("\n") + "\n");
     batch.zip = { zip, ts };
@@ -720,6 +955,7 @@ $("restart").addEventListener("click", () => {
   state.viewers = {};
   state.current = null;
   state.runs = []; state.activeRun = 0;
+  setRunMode(false);
   $("run-tabs").hidden = true; $("download-all").hidden = true;
   $("run-body").hidden = true; $("run-empty").hidden = false; $("run-chip").textContent = "No results yet";
   $("run-empty").innerHTML = "Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.";
