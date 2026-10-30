@@ -65,7 +65,7 @@ For peak-value input, an idealized sinusoidal acceleration pulse is generated wi
 Each simulation is saved as:
 
 ```text
-<SimulationID>_OverallPredictions.csv   MPS95, MAS95, thresholds and injury flags
+<SimulationID>_OverallPredictions.csv   peak angular velocity and acceleration, MPS95, MAS95, thresholds and injury flags
 <SimulationID>_SpatialMPS.csv           MPS for every brain element, with element centroids
 <SimulationID>_SpatialMAS.csv           MAS for every fibre, with fibre centroids
 <SimulationID>_VelocityTrace.csv        the angular velocity trace used

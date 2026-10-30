@@ -57,8 +57,8 @@ export async function runSimulation(cfg, store, { spatial = true } = {}) {
 export function overallCSV(res) {
   const o = res.overall;
   return (
-    csvRow(["SimulationID", "MPS95", "MAS95", "MPS95_Threshold", "MAS95_Threshold", "MPS95_InjuryFlag", "MAS95_InjuryFlag"]) +
-    csvRow([res.simulationId, o.MPS95, o.MAS95, o.MPS95_Threshold, o.MAS95_Threshold, o.MPS95_InjuryFlag ? "1" : "0", o.MAS95_InjuryFlag ? "1" : "0"])
+    csvRow(["SimulationID", "Peak_Angular_Velocity_(rad/s)", "Peak_Angular_Acceleration_(rad/s2)", "MPS95", "MAS95", "MPS95_Threshold", "MAS95_Threshold", "MPS95_InjuryFlag", "MAS95_InjuryFlag"]) +
+    csvRow([res.simulationId, res.features.byName.ang_vel_max, res.features.byName.ang_acc_max, o.MPS95, o.MAS95, o.MPS95_Threshold, o.MAS95_Threshold, o.MPS95_InjuryFlag ? "1" : "0", o.MAS95_InjuryFlag ? "1" : "0"])
   );
 }
 
