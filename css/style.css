@@ -403,7 +403,8 @@ button.toggle[aria-pressed="true"] { background: #7c3aed; border-color: #7c3aed;
 .trace-legend { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; max-height: 5.6rem; overflow-y: auto; }
 .trace-legend .leg { display: inline-flex; align-items: center; gap: .35rem; font-size: .78rem; padding: .12rem .55rem; border-radius: 999px; background: var(--card-2); border: 1px solid var(--line); color: var(--ink); cursor: pointer; }
 .trace-legend .leg[aria-pressed="true"] { border-color: var(--ink); font-weight: 600; }
-.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; background: transparent; }
+.sim-row.sel .sw, .trace-legend .leg[aria-pressed="true"] .sw { background: #e8590c; }
 .sim-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
 .sim-row .sim-file { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
 .sim-row.sel .sim-file { color: var(--ink); font-weight: 600; }

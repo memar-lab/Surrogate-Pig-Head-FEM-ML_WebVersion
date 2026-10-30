@@ -7,9 +7,9 @@ import {
 } from "./pipeline.js";
 import { csvRow } from "./pyfmt.js";
 import { DirectionView, DIRECTION_TEXT } from "./dirview.js";
-import { buildReportHTML, drawReportPage, pageCanvasToPDF } from "./report.js";
+import { buildReportHTML, buildMultiReportHTML } from "./report.js";
 import { SpatialViewer, loadMeshes, loadBrainMesh, MPS_RANGE, MAS_RANGE } from "./viewer3d.js";
-import { prepCanvas, drawTrace, drawTraces, seriesColor, drawDataset, drawOverall, drawColorbar, withLightTheme } from "./plots.js";
+import { prepCanvas, drawTrace, drawTraces, drawDataset, drawOverall, drawColorbar, withLightTheme } from "./plots.js";
 
 const $ = (id) => document.getElementById(id);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -126,7 +126,7 @@ function renderSimList() {
     name.className = "sim-file"; name.title = `${f.name} (click to highlight its trace)`;
     if (i < MAX_PREVIEW) {
       const sw = document.createElement("span");
-      sw.className = "sw"; sw.style.background = seriesColor(i);
+      sw.className = "sw";
       name.appendChild(sw);
     }
     name.append(document.createTextNode(f.name));
@@ -330,7 +330,7 @@ function renderLegend() {
     const b = document.createElement("button");
     b.type = "button"; b.className = "leg"; b.setAttribute("aria-pressed", String(tr.idx === previewIdx));
     const sw = document.createElement("span");
-    sw.className = "sw"; sw.style.background = seriesColor(tr.idx);
+    sw.className = "sw";
     b.append(sw, document.createTextNode(filesOf()[tr.idx].id));
     b.addEventListener("click", () => selectPreview(tr.idx));
     box.appendChild(b);
@@ -430,9 +430,9 @@ $("batch-suggest").addEventListener("close", () => { if ($("batch-suggest").retu
 /** Show the summary table (batch mode) or the normal results (regular mode) on the Run / Results page. */
 function setRunMode(batchView) {
   state.batchView = batchView;
-  for (const id of ["reset-views", "report-menu", "download-zip"]) $(id).hidden = batchView;
+  for (const id of ["reset-views", "report-btn", "download-zip"]) $(id).hidden = batchView;
   $("batch-panel").hidden = !batchView;
-  if (batchView) for (const id of ["run-body", "run-empty", "run-tabs", "download-all"]) $(id).hidden = true;
+  if (batchView) for (const id of ["run-body", "run-empty", "run-tabs", "download-all", "report-all"]) $(id).hidden = true;
 }
 
 /** Where batch results go: straight into a folder the user picks, or (browsers without folder access) one zip. */
@@ -570,7 +570,7 @@ function renderTabs() {
   const bar = $("run-tabs"), runs = state.runs;
   bar.textContent = "";
   bar.hidden = runs.length < 2;
-  $("download-all").hidden = runs.filter((r) => r.cur).length < 2;
+  $("download-all").hidden = $("report-all").hidden = runs.filter((r) => r.cur).length < 2;
   runs.forEach((r, i) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "run-tab" + (r.cur ? "" : " failed"); b.setAttribute("role", "tab");
@@ -730,31 +730,44 @@ function resultsPageCanvasLight() {
   return c;
 }
 
-// ---------------------------------------------------------------- report (.html / .pdf)
+// ---------------------------------------------------------------- report (.html)
 const THRESHOLDS = { MPS95: MPS95_THRESHOLD, MAS95: MAS95_THRESHOLD };
-document.querySelectorAll("[data-report]").forEach((btn) => btn.addEventListener("click", async () => {
+$("report-btn").addEventListener("click", async () => {
   const cur = state.current;
-  btn.closest("details").open = false;
   if (!cur) return;
-  const kind = btn.dataset.report;
   try {
-    busy(`Building ${kind.toUpperCase()} report…`); await tick();
-    const figure = resultsPageCanvas();
-    const name = `${cur.res.folder}_Report`;
-    if (kind === "html") {
-      const html = buildReportHTML(cur, THRESHOLDS, figure.toDataURL("image/png"), cur.notesText);
-      download(new Blob([html], { type: "text/html" }), `${name}.html`);
-    } else {
-      const page = withLightTheme(() => drawReportPage(cur, THRESHOLDS, figure, cur.notesText));
-      download(await pageCanvasToPDF(page), `${name}.pdf`);
-    }
+    busy("Building report…"); await tick();
+    const html = buildReportHTML(cur, THRESHOLDS, resultsPageCanvas().toDataURL("image/png"), cur.notesText);
+    download(new Blob([html], { type: "text/html" }), `${cur.res.folder}_Report.html`);
     busy(null);
   } catch (e) {
     busy(null);
     console.error(e);
     toast(`Could not build report: ${e.message}`, true, 8000);
   }
-}));
+});
+
+$("report-all").addEventListener("click", async () => {
+  const keep = state.activeRun;
+  try {
+    const items = [], ok = state.runs.map((r, i) => [r, i]).filter(([r]) => r.cur);
+    for (let k = 0; k < ok.length; k++) {
+      busy(`Building report: simulation ${k + 1} of ${ok.length}…`); await tick();
+      selectRun(ok[k][1]);   // each figure includes the 3D views, so draw every simulation in turn
+      await tick();
+      const cur = ok[k][0].cur;
+      items.push({ info: cur, figure: resultsPageCanvas().toDataURL("image/png"), notes: cur.notesText });
+    }
+    download(new Blob([buildMultiReportHTML(items, THRESHOLDS)], { type: "text/html" }), `FEMML_Report_${stamp()}.html`);
+    busy(null);
+  } catch (e) {
+    busy(null);
+    console.error(e);
+    toast(`Could not build report: ${e.message}`, true, 8000);
+  } finally {
+    selectRun(keep);
+  }
+});
 
 /** Add one simulation's files (the current result, drawn in the viewers) to a zip. */
 async function addRunToZip(zip, cur) {
@@ -956,7 +969,7 @@ $("restart").addEventListener("click", () => {
   state.current = null;
   state.runs = []; state.activeRun = 0;
   setRunMode(false);
-  $("run-tabs").hidden = true; $("download-all").hidden = true;
+  $("run-tabs").hidden = true; $("download-all").hidden = true; $("report-all").hidden = true;
   $("run-body").hidden = true; $("run-empty").hidden = false; $("run-chip").textContent = "No results yet";
   $("run-empty").innerHTML = "Prediction not run yet. Go to <b>Input Parameters</b> and press <b>Run Prediction</b>.";
   resetForm();

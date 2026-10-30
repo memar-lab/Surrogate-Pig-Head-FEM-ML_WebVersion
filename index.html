@@ -186,13 +186,8 @@
         <span class="chip" id="run-chip">No results yet</span>
         <span class="spacer"></span>
         <button id="reset-views" class="secondary">Reset View</button>
-        <details class="menu" id="report-menu">
-          <summary class="secondary">Download report ▾</summary>
-          <div class="menu-list">
-            <button type="button" data-report="html">Web page (.html)</button>
-            <button type="button" data-report="pdf">PDF document (.pdf)</button>
-          </div>
-        </details>
+        <button id="report-btn" class="secondary">Download report (.html)</button>
+        <button id="report-all" class="secondary" hidden>Report for all (.html)</button>
         <button id="download-zip" class="primary">Download results (.zip)</button>
         <button id="download-all" class="secondary" hidden>Download all (.zip)</button>
       </div>
@@ -329,7 +324,7 @@
         <li>A velocity trace preview shows every selected file in its own colour; click a name (in the list or under the plot) to highlight that trace. The <b>×</b> button next to a file removes it from the run.</li>
         <li>Selecting more than 10 files suggests <b>Batch mode</b> (the button next to Run). In batch mode no plots or 3D views are drawn: you choose an output folder, the results are written there directly, and a table shows SimulationID, Status (Injured / Not Injured), MPS95, MAS95, the two flags and a message. Batch mode has no 20-file limit. Browsers that cannot save to a folder download one .zip instead.</li>
         <li>Press <b>Run Prediction</b>. The page moves to <b>Run / Results</b>.</li>
-        <li>Review the results, then use <b>Download results (.zip)</b> for the data files or <b>Download report</b> for an .html or .pdf summary. With several simulations there is one tab per Simulation ID (a red dot marks an exceeded injury threshold, and a red tab marks a file that failed). The download buttons apply to the open tab, and <b>Download all (.zip)</b> gives one folder per simulation.</li>
+        <li>Review the results, then use <b>Download results (.zip)</b> for the data files or <b>Download report (.html)</b> for a one-page summary. With several simulations there is one tab per Simulation ID (a red dot marks an exceeded injury threshold, and a red tab marks a file that failed). The download buttons apply to the open tab, <b>Download all (.zip)</b> gives one folder per simulation, and <b>Report for all (.html)</b> puts every simulation in one report with a summary table.</li>
       </ol>
 
       <h3 id="ins-batch">Running batch mode</h3>
