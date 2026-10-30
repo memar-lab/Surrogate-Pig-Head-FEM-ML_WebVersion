@@ -391,6 +391,7 @@ MAS95_InjuryFlag = MAS95 ≥ 0.13</pre>
       </ul>
       <p>An output is flagged when <code>value ≥ threshold</code>. The result is flagged as an injury-level response if either MPS95 or MAS95 is flagged.</p>
       <p>Input formats, units and how to run single and batch predictions are described on the <button class="link" data-goto="instructions">Instructions</button> page.</p>
+      <div class="refs">
       <h3>Scientific references</h3>
       <h4>Overall MPS95 and MAS95</h4>
       <p>The platform uses injury thresholds of <b>0.30 for MPS95</b> and <b>0.13 for MAS95</b>. These thresholds were identified for traumatic axonal injury prediction in the pig brain model.</p>
@@ -403,6 +404,7 @@ MAS95_InjuryFlag = MAS95 ≥ 0.13</pre>
       <ol start="3">
         <li>Hajiaghamemar, M. and Margulies, S.S., 2021. <i>Multi-scale white matter tract embedded brain finite element model predicts the location of traumatic diffuse axonal injury.</i> Journal of Neurotrauma, 38(1), pp. 144–157.</li>
       </ol>
+      </div>
       <h3>Privacy and accuracy</h3>
       <p>All computation happens locally in your browser; your files are never uploaded. The numerical pipeline is a line-by-line port of the desktop application and is verified against its output (see <code>tests/parity.mjs</code>). Predictions are only meaningful inside the range of the training data; the app warns when an input lies outside it.</p>
     </div>
