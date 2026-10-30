@@ -351,13 +351,16 @@ progress { width: 100%; height: 10px; margin-top: 0.8rem; accent-color: var(--ac
   animation: splash-logo 1s cubic-bezier(.2, .8, .2, 1) both;
 }
 .splash-word {
-  display: flex; flex-direction: column; overflow: hidden; white-space: nowrap; color: #eaf3ff;
-  font-weight: 200; letter-spacing: .12em; line-height: 1.05; font-size: clamp(34px, 9vmin, 78px);
-  text-shadow: 0 0 14px rgba(90, 170, 255, .85), 0 0 34px rgba(60, 140, 255, .45);
+  display: flex; flex-direction: column; align-items: flex-start; overflow: hidden; white-space: nowrap; color: #fff;
+  line-height: 1.1; font-size: clamp(16px, min(5vmin, 3.6vw), 64px);
   max-width: 0; opacity: 0; padding-left: 0;
   animation: splash-word 1s cubic-bezier(.5, 0, .2, 1) 1.7s forwards;
 }
-.splash-word span:last-child { letter-spacing: .5em; }
+.splash-title {
+  font-weight: 200; letter-spacing: .04em; font-size: 1.45em; color: #eaf3ff;
+  text-shadow: 0 0 14px rgba(90, 170, 255, .85), 0 0 34px rgba(60, 140, 255, .45);
+}
+.splash-sub { font-weight: 300; margin-top: .25em; }
 @keyframes splash-logo { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
-@keyframes splash-word { from { max-width: 0; opacity: 0; padding-left: 0; } to { max-width: 8em; opacity: 1; padding-left: .45em; } }
+@keyframes splash-word { from { max-width: 0; opacity: 0; padding-left: 0; } to { max-width: 18em; opacity: 1; padding-left: .6em; } }
 @keyframes splash-out { to { opacity: 0; transform: scale(1.06); visibility: hidden; } }
