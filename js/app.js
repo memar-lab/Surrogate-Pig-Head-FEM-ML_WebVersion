@@ -85,8 +85,21 @@ let lastTrace = null;
 
 const inputType = () => document.querySelector('input[name="itype"]:checked').value;
 
+// Simulation ID default: the loaded file's name for trace inputs, SIM_001 for peak values; the user may overwrite it.
+let idEdited = false;
+$("sim-id").addEventListener("input", () => { idEdited = true; });
+function defaultSimId() {
+  const t = inputType();
+  const f = t === "PeakValues" ? null : loaded[t];
+  return f ? f.name.replace(/\.csv$/i, "") : "SIM_001";
+}
+function setDefaultSimId(force) {
+  if (force || !idEdited) { $("sim-id").value = defaultSimId(); idEdited = false; }
+}
+
 function updateInputMode() {
   const t = inputType();
+  setDefaultSimId(false);
   $$(".sub").forEach((s) => (s.hidden = s.dataset.for !== t));
   autoTrace();
 }
@@ -102,6 +115,7 @@ async function readFileInto(input, key) {
       $("peak-vel").value = p.peakVelocity;
     } catch (e) { toast(e.message, true); }
   }
+  setDefaultSimId(true);
   autoTrace();
 }
 $("file-vel").addEventListener("change", (e) => readFileInto(e.target, "VelocityTrace"));
@@ -191,7 +205,7 @@ let traceTimer = null;
 for (const id of ["peak-acc", "peak-vel"]) $(id).addEventListener("input", () => { clearTimeout(traceTimer); traceTimer = setTimeout(autoTrace, 350); });
 
 function resetForm() {
-  $("sim-id").value = "SIM_001";
+  idEdited = false;
   document.querySelector('input[name="itype"][value="VelocityTrace"]').checked = true;
   $("direction").value = "Sagittal";
   updateDirectionPicture();

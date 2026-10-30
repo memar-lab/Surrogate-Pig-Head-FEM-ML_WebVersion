@@ -101,10 +101,6 @@
 
       <div class="grid2">
         <div>
-          <label class="field">Simulation ID
-            <input id="sim-id" type="text" value="SIM_001" autocomplete="off" spellcheck="false">
-          </label>
-
           <fieldset>
             <legend>Impact Profile</legend>
             <label class="radio"><input type="radio" name="itype" value="VelocityTrace" checked> Angular Velocity Trace</label>
@@ -126,6 +122,10 @@
               <p class="hint">Or load a one-row file: <input type="file" id="file-peak" accept=".csv,text/csv"> · <a href="Templates/PeakValues_Template.csv" download>template</a></p>
             </div>
           </fieldset>
+
+          <label class="field" style="margin-top:.8rem">Simulation ID
+            <input id="sim-id" type="text" value="SIM_001" autocomplete="off" spellcheck="false">
+          </label>
 
           <div class="inline">
             <label class="field">Impact Direction
