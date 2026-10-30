@@ -16,12 +16,40 @@
       document.documentElement.dataset.theme = t;
     })();
   </script>
+  <script>
+    // Intro animation only on the first visit in this browser (and not with reduced motion).
+    (function () {
+      var seen = false;
+      try { seen = localStorage.getItem("splashSeen") === "1"; } catch (e) { seen = false; }
+      if (!seen && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) document.documentElement.classList.add("splash-on");
+    })();
+  </script>
   <link rel="stylesheet" href="css/style.css">
   <script type="importmap">
     { "imports": { "three": "./vendor/three.module.min.js" } }
   </script>
 </head>
 <body>
+<div id="splash" aria-hidden="true">
+  <div class="splash-group">
+    <span class="splash-logo"></span>
+    <span class="splash-word"><span>MEMAR</span><span>LAB</span></span>
+  </div>
+</div>
+<script>
+  (function () {
+    var el = document.getElementById("splash");
+    if (!document.documentElement.classList.contains("splash-on")) { el.remove(); return; }
+    function done() {
+      document.documentElement.classList.remove("splash-on");
+      try { localStorage.setItem("splashSeen", "1"); } catch (e) {}
+      el.remove();
+    }
+    el.addEventListener("animationend", function (e) { if (e.animationName === "splash-out") done(); });
+    el.addEventListener("click", done);
+    setTimeout(done, 6000); // safety net
+  })();
+</script>
 <header class="topbar">
   <div class="brand">
     <span class="logo" role="img" aria-label="Memar Lab logo"></span>
