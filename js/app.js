@@ -1,8 +1,8 @@
-// UI controller: pages, single run, results, batch mode and downloads.
+// UI controller: pages, single and multiple runs, results, batch mode and downloads.
 import { getVelocityTrace, readPeakValuesCSV, checkPeakRange } from "./impactProfile.js";
 import { ModelStore, modelLabel } from "./models.js";
 import {
-  runSimulation, overallCSV, spatialCSV, traceCSV, loadCentroids, batchConfigFor, safeFolderName,
+  runSimulation, overallCSV, spatialCSV, traceCSV, loadCentroids, safeFolderName,
   BATCH_SUMMARY_HEADER, MPS95_THRESHOLD, MAS95_THRESHOLD,
 } from "./pipeline.js";
 import { csvRow } from "./pyfmt.js";
@@ -184,8 +184,11 @@ function updateInputMode() {
 $$('input[name="itype"]').forEach((r) => r.addEventListener("change", updateInputMode));
 
 async function readFileInto(input, key) {
-  let list = Array.from(input.files || []);
+  const list = Array.from(input.files || []);
   input.value = ""; // so the same files can be picked again after removing some
+  return loadFiles(list, key);
+}
+async function loadFiles(list, key) {
   if (!batchMode && list.length > MAX_FILES) {
     toast(`Only the first ${MAX_FILES} files are used. Turn on Batch mode to run more.`, true);
     list = list.slice(0, MAX_FILES);
@@ -204,6 +207,15 @@ async function readFileInto(input, key) {
   autoTrace();
   if (!batchMode && loaded[key].length > 10) suggestBatch(loaded[key].length);
 }
+// drop CSV files onto the Impact Profile box: they go to the selected input type
+const dropBox = document.querySelector("#page-input fieldset");
+["dragenter", "dragover"].forEach((ev) => dropBox.addEventListener(ev, (e) => { e.preventDefault(); dropBox.classList.add("over"); }));
+["dragleave", "drop"].forEach((ev) => dropBox.addEventListener(ev, (e) => { e.preventDefault(); dropBox.classList.remove("over"); }));
+dropBox.addEventListener("drop", (e) => {
+  const csvs = Array.from(e.dataTransfer.files || []).filter((f) => /\.csv$/i.test(f.name));
+  if (!csvs.length) { toast("Drop .csv files here.", true); return; }
+  loadFiles(csvs, inputType());
+});
 $("file-vel").addEventListener("change", (e) => readFileInto(e.target, "VelocityTrace"));
 $("file-acc").addEventListener("change", (e) => readFileInto(e.target, "AccelerationTrace"));
 $("file-peak").addEventListener("change", (e) => readFileInto(e.target, "PeakValues"));
@@ -271,7 +283,10 @@ function getCfgs(lenient = false) {
   const n = isMulti() ? filesOf().length : 1;
   const failed = [];
   const cfgs = [];
+  let skipped = 0;
   for (let i = 0; i < n; i++) {
+    const file = filesOf()[i];
+    if (lenient && isMulti() && file && !file.manual && /template/i.test(file.name)) { skipped++; continue; }
     try { cfgs.push(getCfg(false, i)); }
     catch (e) {
       if (!lenient) throw e;
@@ -285,7 +300,7 @@ function getCfgs(lenient = false) {
     if (seen.has(key)) throw new Error(`Simulation ID "${c.simulationId}" is used more than once. Give every simulation its own ID.`);
     seen.add(key);
   }
-  return lenient ? { cfgs, failed } : cfgs;
+  return lenient ? { cfgs, failed, skipped } : cfgs;
 }
 
 function redrawTrace() {
@@ -456,6 +471,7 @@ function setBatchMode(on) {
   $("run").textContent = on ? "Run Batch" : "Run Prediction";
   $("visual").disabled = on;
   $("batch-hint").hidden = !on;
+  $("batch-spatial-row").hidden = !on;
 }
 $("batch-toggle").addEventListener("click", () => setBatchMode(!batchMode));
 
@@ -536,9 +552,13 @@ function addResultRow(tbl, r, message) {
 
 /** Batch mode: no plots, no 3D, no big arrays kept; every simulation is written out as soon as it is done. */
 async function runBatchMode() {
-  let cfgs, bad;
-  try { ({ cfgs, failed: bad } = getCfgs(true)); } catch (e) { toast(e.message, true); return; }
-  if (!cfgs.length && !bad.length) return;
+  let cfgs, bad, skipped;
+  try { ({ cfgs, failed: bad, skipped } = getCfgs(true)); } catch (e) { toast(e.message, true); return; }
+  if (!cfgs.length && !bad.length) {
+    if (skipped) toast("Only template files were selected, and they are skipped. Use your own files.", true);
+    return;
+  }
+  const withSpatial = $("bp-spatial").checked;
   let sink;
   try { sink = await openSink(); } // must be the first await: the folder picker needs the click's permission
   catch (e) {
@@ -565,10 +585,12 @@ async function runBatchMode() {
     let centroids = null;
     if (cfgs.length) {
       await store.loadOverall(modelName, dirName);
-      await store.loadSpatial(modelName, dirName);
-      centroids = await getCentroids();
+      if (withSpatial) {
+        await store.loadSpatial(modelName, dirName);
+        centroids = await getCentroids();
+      }
     }
-    log.push(`Memar Lab batch run  ${new Date().toISOString()}`, `Input type   : ${inputType()}`, `Direction    : ${dirName}`, `Model type   : ${modelName}`, `Simulations  : ${n}`, "");
+    log.push(`Memar Lab batch run  ${new Date().toISOString()}`, `Input type   : ${inputType()}`, `Direction    : ${dirName}`, `Model type   : ${modelName}`, `Simulations  : ${n}`, `Spatial CSVs : ${withSpatial ? "yes" : "no"}`, ...(skipped ? [`Skipped      : ${skipped} template file${skipped === 1 ? "" : "s"}`] : []), "");
     for (const b of bad) {
       let id = safeFolderName(b.id);
       while (used.has(id)) id += "_2";
@@ -589,11 +611,14 @@ async function runBatchMode() {
       const row = { SimulationID: cfg.simulationId, InputFile: cfg.fileName || "", Status: "OK", ErrorMessage: "", MPS95: "", MAS95: "", f1: "", f2: "", folder: id, overall: "", smps: "", smas: "" };
       let message;
       try {
-        const res = await runSimulation({ ...cfg, simulationId: id }, store, { spatial: true });
+        const res = await runSimulation({ ...cfg, simulationId: id }, store, { spatial: withSpatial });
         await sink.write(`${id}/${id}_OverallPredictions.csv`, overallCSV(res));
-        await sink.write(`${id}/${id}_SpatialMPS.csv`, spatialCSV("MPS", res.spatial.MPS, centroids));
-        await sink.write(`${id}/${id}_SpatialMAS.csv`, spatialCSV("MAS", res.spatial.MAS, centroids));
-        row.overall = `${id}/${id}_OverallPredictions.csv`; row.smps = `${id}/${id}_SpatialMPS.csv`; row.smas = `${id}/${id}_SpatialMAS.csv`;
+        row.overall = `${id}/${id}_OverallPredictions.csv`;
+        if (withSpatial) {
+          await sink.write(`${id}/${id}_SpatialMPS.csv`, spatialCSV("MPS", res.spatial.MPS, centroids));
+          await sink.write(`${id}/${id}_SpatialMAS.csv`, spatialCSV("MAS", res.spatial.MAS, centroids));
+          row.smps = `${id}/${id}_SpatialMPS.csv`; row.smas = `${id}/${id}_SpatialMAS.csv`;
+        }
         row.MPS95 = res.overall.MPS95; row.MAS95 = res.overall.MAS95;
         row.f1 = res.overall.MPS95_InjuryFlag ? 1 : 0; row.f2 = res.overall.MAS95_InjuryFlag ? 1 : 0;
         row.pv = res.features.byName.ang_vel_max; row.pa = res.features.byName.ang_acc_max;
@@ -614,7 +639,7 @@ async function runBatchMode() {
     await sink.write(`_BatchSummaries/BatchSummary_${sink.ts}.csv`, summaryCSV(rows));
     await sink.write("batch_log.txt", log.join("\n") + "\n");
     await sink.finish();
-    setStatus(status, `Done. ${ok} of ${n} succeeded. Results were saved to ${sink.label}.`, ok === n ? "ok" : "err");
+    setStatus(status, `Done. ${ok} of ${n} succeeded. Results were saved to ${sink.label}.${skipped ? ` ${skipped} template file${skipped === 1 ? " was" : "s were"} skipped.` : ""}`, ok === n ? "ok" : "err");
     $("bp-folder").hidden = false; $("bp-folder-hint").hidden = !sink.handle;
   } catch (e) {
     console.error(e);
@@ -890,141 +915,6 @@ $("download-all").addEventListener("click", async () => {
   } finally {
     selectRun(keep);
   }
-});
-
-// ---------------------------------------------------------------- batch mode
-const batch = { files: [], zip: null, running: false };
-
-function renderBatchList() {
-  const el = $("b-list");
-  if (!batch.files.length) { el.textContent = "No files selected."; $("b-run").disabled = true; return; }
-  const usable = batch.files.filter((f) => !/template/i.test(f.name));
-  const skipped = batch.files.length - usable.length;
-  el.textContent = `${usable.length} file${usable.length === 1 ? "" : "s"} ready: ${usable.slice(0, 6).map((f) => f.name).join(", ")}${usable.length > 6 ? ", …" : ""}` +
-    (skipped ? ` (${skipped} template file${skipped === 1 ? "" : "s"} skipped)` : "");
-  $("b-run").disabled = batch.running || !usable.length;
-}
-async function addBatchFiles(fileList) {
-  for (const f of fileList) {
-    if (!/\.csv$/i.test(f.name)) continue;
-    batch.files.push({ name: f.name, text: await f.text() });
-  }
-  renderBatchList();
-}
-$("b-files").addEventListener("change", async (e) => { await addBatchFiles(e.target.files); e.target.value = ""; });
-const dz = $("dropzone");
-["dragenter", "dragover"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add("over"); }));
-["dragleave", "drop"].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove("over"); }));
-dz.addEventListener("drop", (e) => addBatchFiles(e.dataTransfer.files));
-$("b-clear").addEventListener("click", () => {
-  batch.files = []; batch.zip = null; $("b-results").hidden = true; $("b-progress").hidden = true; setStatus($("b-status"), "");
-  renderBatchList();
-});
-$("b-example").addEventListener("click", async () => {
-  try {
-    $("b-type").value = "PeakValues";
-    for (const n of ["SIM_001", "SIM_002", "SIM_003"]) {
-      const r = await fetch(`ExampleBatchFolder/${n}.csv`);
-      if (!r.ok) throw new Error(`Could not load example ${n}`);
-      batch.files.push({ name: `${n}.csv`, text: await r.text() });
-    }
-    renderBatchList();
-  } catch (e) { toast(e.message, true); }
-});
-
-$("b-run").addEventListener("click", runBatch);
-
-async function runBatch() {
-  const type = $("b-type").value, direction = $("b-direction").value, model = $("b-model").value;
-  const withSpatial = $("b-spatial").checked;
-  const files = batch.files.filter((f) => !/template/i.test(f.name));
-  if (!files.length) return;
-  batch.running = true; $("b-run").disabled = true;
-  const prog = $("b-progress"); prog.hidden = false; prog.max = files.length; prog.value = 0;
-  $("b-results").hidden = true;
-  const zip = new JSZip(), ts = stamp();
-  const rows = [], log = [];
-  const used = new Set();
-  let ok = 0;
-  try {
-    setStatus($("b-status"), `Loading ${model} models…`);
-    await store.loadOverall(model, direction);
-    let centroids = null;
-    if (withSpatial) { await store.loadSpatial(model, direction); centroids = await getCentroids(); }
-    log.push(`FEM-ML Surrogate batch run  ${new Date().toISOString()}`, `Input type   : ${type}`, `Direction    : ${direction}`, `Model type   : ${model}`, `Files        : ${files.length}`, "");
-
-    for (let i = 0; i < files.length; i++) {
-      const f = files[i];
-      let id = safeFolderName(f.name.replace(/\.csv$/i, ""));
-      while (used.has(id)) id += "_2";
-      used.add(id);
-      setStatus($("b-status"), `Running ${i + 1} of ${files.length}: ${f.name}`);
-      await tick();
-      const row = { SimulationID: id, InputFile: f.name, Status: "OK", ErrorMessage: "", MPS95: "", MAS95: "", f1: "", f2: "", folder: id, overall: "", smps: "", smas: "" };
-      try {
-        const cfg = batchConfigFor(f, type, direction, model);
-        cfg.simulationId = id;
-        const res = await runSimulation(cfg, store, { spatial: withSpatial });
-        const dir = zip.folder(id);
-        dir.file(`${id}_OverallPredictions.csv`, overallCSV(res));
-        row.overall = `${id}/${id}_OverallPredictions.csv`;
-        if (withSpatial) {
-          dir.file(`${id}_SpatialMPS.csv`, spatialCSV("MPS", res.spatial.MPS, centroids));
-          dir.file(`${id}_SpatialMAS.csv`, spatialCSV("MAS", res.spatial.MAS, centroids));
-          row.smps = `${id}/${id}_SpatialMPS.csv`; row.smas = `${id}/${id}_SpatialMAS.csv`;
-        }
-        row.MPS95 = res.overall.MPS95; row.MAS95 = res.overall.MAS95;
-        row.f1 = res.overall.MPS95_InjuryFlag ? 1 : 0; row.f2 = res.overall.MAS95_InjuryFlag ? 1 : 0;
-        ok++;
-        log.push(`OK    ${id.padEnd(24)} MPS95=${res.overall.MPS95.toFixed(4)}  MAS95=${res.overall.MAS95.toFixed(4)}`);
-      } catch (e) {
-        row.Status = "FAILED"; row.ErrorMessage = e.message; row.folder = "";
-        log.push(`FAIL  ${id.padEnd(24)} ${e.message}`);
-      }
-      rows.push(row);
-      prog.value = i + 1;
-    }
-    log.push("", `Done. ${ok} of ${files.length} succeeded.`);
-    const summary = summaryCSV(rows);
-    zip.file(`_BatchSummaries/BatchSummary_${ts}.csv`, summary);
-    zip.file("batch_log.txt", log.join("\n") + "\n");
-    batch.zip = { zip, ts };
-    renderBatchTable(rows);
-    setStatus($("b-status"), `Done. ${ok} of ${files.length} succeeded.`, ok === files.length ? "ok" : "err");
-  } catch (e) {
-    console.error(e);
-    setStatus($("b-status"), `Batch stopped: ${e.message}`, "err");
-  } finally {
-    batch.running = false;
-    renderBatchList();
-  }
-}
-
-function renderBatchTable(rows) {
-  const t = $("b-table");
-  t.innerHTML = "";
-  const h = t.insertRow();
-  for (const c of ["SimulationID", "Status", "MPS95", "MAS95", "MPS95 flag", "MAS95 flag", "Message"]) h.insertCell().outerHTML = `<th>${c}</th>`;
-  for (const r of rows) {
-    const tr = t.insertRow();
-    tr.insertCell().textContent = r.SimulationID;
-    const s = tr.insertCell(); s.textContent = r.Status; s.className = r.Status === "OK" ? "ok" : "fail";
-    const num = (v) => { const c = tr.insertCell(); c.className = "num"; c.textContent = v === "" ? "" : Number(v).toFixed(4); };
-    num(r.MPS95); num(r.MAS95);
-    for (const f of [r.f1, r.f2]) { const c = tr.insertCell(); c.className = "num"; c.textContent = f === "" ? "" : f ? "yes" : "no"; }
-    tr.insertCell().textContent = r.ErrorMessage;
-  }
-  $("b-results").hidden = false;
-}
-
-$("b-download").addEventListener("click", async () => {
-  if (!batch.zip) return;
-  busy("Building ZIP…"); await tick();
-  try {
-    const blob = await batch.zip.zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 3 } });
-    download(blob, `FEMML_BatchResults_${batch.zip.ts}.zip`);
-  } catch (e) { toast(`Could not build ZIP: ${e.message}`, true); }
-  busy(null);
 });
 
 // ---------------------------------------------------------------- restart / boot

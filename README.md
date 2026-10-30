@@ -34,13 +34,15 @@ An output is flagged when `value >= threshold`. The result is reported as an inj
 
 The Run / Results page shows where your input sits within the training dataset, the overall MPS95 and MAS95 against their thresholds, and rotatable 3D maps of spatial MPS and MAS (drag to rotate, scroll to zoom, **Reset View** to restore). Click **Download results (.zip)** to save the output files.
 
+### Several simulations at once
+
+Select several files (up to 20), or drag and drop them onto the Impact Profile box. Each file becomes its own simulation, with an editable Simulation ID (its file name by default) and a **×** button to remove it. For peak values you can also type the values and press **Add trace** for each trace; the Simulation ID goes up by one each time. The results page then has one tab per simulation. **Report** (Only this tab, All tabs) and **Download** (Only this simulation, All simulations) save the results.
+
 ### Batch mode
 
-1. Open the **Batch** tab.
-2. Choose the input type, impact direction and model. All files in one batch must share these settings.
-3. Drop your CSV files onto the page, or select them. To try it first, click **use the 3 example files**.
-4. Optionally untick **Include spatial MPS / MAS CSVs** for a faster, summary-only run.
-5. Click **Run batch**, then **Download batch results (.zip)**.
+1. On **Input Parameters**, choose the input type, impact direction and model, and select all the CSV files (or drag and drop them). All files in one batch must share these settings.
+2. Press **Batch mode: Off** to turn batch mode on (the button changes colour). Optionally untick **Include spatial MPS / MAS CSVs** for a faster, summary-only run.
+3. Click **Run Batch** and choose an output folder. Results are written there directly; the page shows a table with the peak angular velocity and acceleration, status (Injured / Not Injured), MPS95, MAS95, the flags and a message. **Output Folder** opens your browser's file window inside the folder. Browsers that cannot save to a folder download one .zip instead.
 
 Rules: each file name (without `.csv`) becomes the Simulation ID, and files with `template` in the name are skipped. If one file fails, the batch continues and the reason is listed in the summary.
 

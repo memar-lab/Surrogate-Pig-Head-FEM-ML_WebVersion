@@ -62,7 +62,6 @@
     <button class="step" data-page="species">1 · Species</button>
     <button class="step" data-page="input">2 · Input Parameters</button>
     <button class="step" data-page="run">3 · Run / Results</button>
-    <button class="step" data-page="batch">Batch</button>
     <button class="step" data-page="instructions">Instructions</button>
     <button class="step" data-page="about">About</button>
   </nav>
@@ -175,6 +174,7 @@
         <button id="batch-toggle" class="toggle" type="button" aria-pressed="false" title="Run many files without plots or 3D views and save the results straight to a folder">Batch mode: Off</button>
         <button id="run" class="primary">Run Prediction</button>
       </div>
+      <label class="check batch-hint" id="batch-spatial-row" hidden><input type="checkbox" id="bp-spatial" checked> Include spatial MPS / MAS CSVs (about 5 MB each per simulation; untick for a fast summary-only run)</label>
       <p id="batch-hint" class="hint batch-hint" hidden>Batch mode: no plots or 3D views are drawn. When you press <b>Run Batch</b> you choose an output folder and the results are written there directly (a summary table is shown here). If your browser cannot save to a folder, one .zip is downloaded instead. If the browser refuses a folder such as Documents or Downloads, pick or create a sub-folder.</p>
     </div>
   </section>
@@ -237,65 +237,25 @@
     </div>
   </section>
 
-  <!-- Batch -->
-  <section class="page" id="page-batch" hidden>
-    <div class="card">
-      <h2>Batch mode</h2>
-      <p class="muted">Run many CSV files at once. All files in one batch must use the same input type, direction and model. File names (without <code>.csv</code>) become the Simulation IDs; files with <code>template</code> in the name are skipped.</p>
-      <div class="inline">
-        <label class="field">Input Type
-          <select id="b-type">
-            <option value="VelocityTrace">VelocityTrace</option>
-            <option value="AccelerationTrace">AccelerationTrace</option>
-            <option value="PeakValues" selected>PeakValues</option>
-          </select>
-        </label>
-        <label class="field">Impact Direction
-          <select id="b-direction"><option>Axial</option><option selected>Sagittal</option><option>Coronal</option></select>
-        </label>
-        <label class="field">Model Architecture
-          <select id="b-model"><option>DNN</option><option>Lasso</option><option>Ridge</option><option value="Random Forest - Linear">Random Forest - CART</option><option>Random Forest - Curvature</option></select>
-        </label>
-      </div>
-      <div id="dropzone" class="dropzone" tabindex="0">
-        <p><b>Drop CSV files here</b>, or</p>
-        <input type="file" id="b-files" accept=".csv,text/csv" multiple>
-        <p class="hint">or <button class="link" id="b-example">use the 3 example files</button> · no folder? pick several files at once.</p>
-      </div>
-      <label class="check"><input type="checkbox" id="b-spatial" checked> Include spatial MPS / MAS CSVs (about 5 MB each per simulation; untick for a fast summary-only run)</label>
-      <div id="b-list" class="muted">No files selected.</div>
-      <div class="actions">
-        <button id="b-clear" class="ghost">Clear</button>
-        <button id="b-run" class="primary" disabled>Run batch</button>
-      </div>
-      <progress id="b-progress" value="0" max="1" hidden></progress>
-      <p id="b-status" class="status muted"></p>
-      <div id="b-results" hidden>
-        <table id="b-table"></table>
-        <div class="actions"><button id="b-download" class="primary">Download batch results (.zip)</button></div>
-      </div>
-    </div>
-  </section>
-
   <!-- Instructions -->
   <section class="page" id="page-instructions" hidden>
     <div class="card prose">
       <h2>Instructions</h2>
-      <p>This platform predicts brain tissue response of the pig head finite element model from head impact kinematics. Run one simulation on <b>Input Parameters</b>, or many at once on <b>Batch</b>.</p>
+      <p>This platform predicts brain tissue response of the pig head finite element model from head impact kinematics. Use <b>Input Parameters</b> to run one simulation or several at once, and turn on <b>Batch mode</b> there for large sets of files.</p>
       <ul class="toc">
         <li><a href="#ins-inputs">How to provide inputs: input options and units</a></li>
-        <li><a href="#ins-single">Running one simulation</a></li>
+        <li><a href="#ins-single">Running one or several simulations</a></li>
         <li><a href="#ins-batch">Running batch mode</a></li>
         <li><a href="#ins-results">Expected results</a></li>
       </ul>
 
       <h3 id="ins-inputs">How to provide inputs: input options and units</h3>
-      <p>Three input types are supported. Whatever you choose, it is converted into an angular velocity trace before the 15 kinematic features are extracted. For one run, select one input type. In a batch, every CSV file must use the same input type. Keep the column names exactly as in the templates (downloadable links are in the batch steps below and on the Input Parameters page).</p>
+      <p>Three input types are supported. Whatever you choose, it is converted into an angular velocity trace before the 15 kinematic features are extracted. For one run, select one input type; every file in a run must use the same input type. Keep the column names exactly as in the templates (the template links are next to each input on the Input Parameters page and below).</p>
       <table class="ins-table">
-        <tr><th>Input type</th><th>CSV columns</th><th>Units</th></tr>
-        <tr><td><b>VelocityTrace</b><br>Angular velocity trace</td><td><code>time_(s)</code><br><code>Angular_velocity_(rad/s)</code></td><td>s, rad/s</td></tr>
-        <tr><td><b>AccelerationTrace</b><br>Angular acceleration trace</td><td><code>time_(s)</code><br><code>Angular_Acceleration_(rad/s2)</code></td><td>s, rad/s²</td></tr>
-        <tr><td><b>PeakValues</b><br>Idealized sinusoidal profile</td><td><code>Peak_Acceleration_(rad/s2)</code><br><code>Peak_Velocity_(rad/s)</code></td><td>rad/s², rad/s</td></tr>
+        <tr><th>Input type</th><th>CSV columns</th><th>Units</th><th>Template</th></tr>
+        <tr><td><b>VelocityTrace</b><br>Angular velocity trace</td><td><code>time_(s)</code><br><code>Angular_velocity_(rad/s)</code></td><td>s, rad/s</td><td><a href="Templates/AngularVelocityTrace_Template.csv" download>download</a></td></tr>
+        <tr><td><b>AccelerationTrace</b><br>Angular acceleration trace</td><td><code>time_(s)</code><br><code>Angular_Acceleration_(rad/s2)</code></td><td>s, rad/s²</td><td><a href="Templates/AngularAccelerationTrace_Template.csv" download>download</a></td></tr>
+        <tr><td><b>PeakValues</b><br>Idealized sinusoidal profile</td><td><code>Peak_Acceleration_(rad/s2)</code><br><code>Peak_Velocity_(rad/s)</code></td><td>rad/s², rad/s</td><td><a href="Templates/PeakValues_Template.csv" download>download</a></td></tr>
       </table>
       <h4>VelocityTrace</h4>
       <p>Use this when your file already contains angular velocity. It is read directly.</p>
@@ -312,37 +272,41 @@
 0.002,100000
 0.003,50000</pre>
       <h4>PeakValues</h4>
-      <p>Use this when you only know the peak angular acceleration and peak angular velocity. Enter them in the two boxes, or load a one-row CSV (exactly one row per simulation):</p>
+      <p>Use this when you only know the peak angular acceleration and peak angular velocity. Type them into the two boxes, or load a one-row CSV (exactly one row per simulation):</p>
 <pre>Peak_Acceleration_(rad/s2),Peak_Velocity_(rad/s)
 150000,100</pre>
-      <p>An idealized sinusoidal acceleration pulse and its analytical velocity are generated. With α<sub>max</sub> the peak acceleration (rad/s²) and ω<sub>peak</sub> the peak velocity (rad/s):</p>
+      <p>Values must lie inside the range of the training data: peak angular acceleration of at least 25,000 rad/s² and peak angular velocity of at least 50 rad/s. An idealized sinusoidal acceleration pulse and its analytical velocity are generated. With α<sub>max</sub> the peak acceleration (rad/s²) and ω<sub>peak</sub> the peak velocity (rad/s):</p>
 <pre>T = π · ω_peak / α_max
 α(t) = α_max · sin(2π t / T)
 ω(t) = (α_max · T / 2π) · (1 − cos(2π t / T))</pre>
       <p>The time step is 10 µs (<code>dt = 1e-5 s</code>) and the trace lasts <code>T + 0.020 s</code>: after the pulse, acceleration and velocity are held at zero for an extra 20 ms.</p>
       <h4>Other settings</h4>
       <ul>
-        <li><b>Simulation ID</b>: a name for the run. It labels the results and the downloaded files.</li>
+        <li><b>Simulation ID</b>: a name for the run, shown below the Impact Profile choices. For a trace file it defaults to the file name (without <code>.csv</code>); for peak values it defaults to <code>SIM_001</code>. You can edit it at any time. It labels the results and the downloaded files.</li>
         <li><b>Impact Direction</b>: <b>Axial</b>, <b>Sagittal</b> or <b>Coronal</b>. The picture beside it shows the rotation on the pig brain. Multi-Direction is reserved for future development; current models are not trained for it.</li>
         <li><b>Pre-trained Model</b>: DNN, Lasso, Ridge, Random Forest - CART or Random Forest - Curvature.</li>
         <li><b>Visual</b>: ON draws the 3D spatial MPS and MAS views; OFF skips them (the spatial values stay in the downloadable CSV files).</li>
       </ul>
 
-      <h3 id="ins-single">Running one simulation</h3>
+      <h3 id="ins-single">Running one or several simulations</h3>
       <ol>
         <li>On <b>Species</b>, keep <b>Pig</b> selected (the only species available now) and continue.</li>
-        <li>On <b>Input Parameters</b>, enter the Simulation ID, choose the input type and load the file or enter the peak values.</li>
-        <li>Choose the impact direction, the model and the visual option. The velocity trace preview appears automatically once the input is valid; you can also press <b>load an example</b>.</li>
-        <li><b>Several files at once:</b> select up to 20 files in the file picker (all of the same input type). Each file becomes its own simulation, and its Simulation ID defaults to the file name, which you can edit in the list that appears. Direction, model and Visual apply to all of them.</li>
-        <li>For peak values you can also type several traces: enter the two values, press <b>Add trace</b>, then enter the next ones. The Simulation ID goes up by one each time (SIM_001, SIM_002, …); a different name starts again at SIM_001. Use the list below to rename or remove traces.</li>
-        <li>A velocity trace preview shows every selected file in its own colour; click a name (in the list or under the plot) to highlight that trace. The <b>×</b> button next to a file removes it from the run.</li>
-        <li>Selecting more than 10 files suggests <b>Batch mode</b> (the button next to Run). In batch mode no plots or 3D views are drawn: you choose an output folder, the results are written there directly, and a table shows SimulationID, Status (Injured / Not Injured), MPS95, MAS95, the two flags and a message. Batch mode has no 20-file limit. Browsers that cannot save to a folder download one .zip instead.</li>
-        <li>Press <b>Run Prediction</b>. The page moves to <b>Run / Results</b>.</li>
-        <li>Review the results, then use <b>Download results (.zip)</b> for the data files or <b>Report</b> (hover for the options) for an .html summary. With several simulations there is one tab per Simulation ID (a red dot marks an exceeded injury threshold, and a red tab marks a file that failed). The download buttons apply to the open tab, <b>Download</b> gives the data files (.zip) of this simulation or of all simulations, and <b>Report</b> gives an .html report of this tab or one report for all tabs (with a summary table). Hover over either button to choose.</li>
+        <li>On <b>Input Parameters</b>, choose the input type under <b>Impact Profile</b> and load a file or enter the peak values. The velocity trace preview appears automatically.</li>
+        <li>Check the <b>Simulation ID</b> below it, then choose the impact direction, the model and the visual option.</li>
+        <li><b>Several simulations at once:</b>
+          <ul>
+            <li>Select several files in the file picker, or drag and drop them onto the Impact Profile box (up to 20 in regular mode). Each file becomes its own simulation, with an editable Simulation ID in the list that appears. The <b>×</b> button next to a file removes it from the run.</li>
+            <li>For peak values you can also type the traces one by one: enter the two values and press <b>Add trace</b>, then enter the next ones. The Simulation ID goes up by one each time (SIM_001, SIM_002, …); a different name starts again at SIM_001. Values in the boxes only count when you press <b>Add trace</b>. Use the list to rename or remove traces.</li>
+            <li>The preview plots every trace in blue. Click a name in the list or under the plot to highlight that trace.</li>
+            <li>Selecting more than 10 files suggests turning on Batch mode.</li>
+          </ul>
+        </li>
+        <li>Press <b>Run Prediction</b>. The page moves to <b>Run / Results</b>. With several simulations there is one tab per Simulation ID; a red dot marks an exceeded injury threshold and a red tab marks a file that failed.</li>
+        <li>Use the two buttons at the top to save the results. Hover over (or tap) <b>Report</b> to choose <b>Only this tab</b> or <b>All tabs</b> (an .html report). Hover over <b>Download</b> to choose <b>Only this simulation</b> or <b>All simulations</b> (a .zip of the data files).</li>
       </ol>
 
       <h3 id="ins-batch">Running batch mode</h3>
-      <p>Batch mode runs a whole set of CSV files with the same input type, impact direction and model. It runs in your browser; nothing is uploaded.</p>
+      <p>Batch mode is for many simulations. It draws no plots or 3D views, writes the results straight into a folder you choose, and shows a summary table. There is no 20-file limit. Everything runs in your browser; nothing is uploaded.</p>
       <ol>
         <li>Prepare one CSV per simulation from the template that matches your input type (download it here), and keep the column names unchanged:
           <ul>
@@ -350,52 +314,57 @@
             <li>Angular acceleration traces (<b>AccelerationTrace</b>): <a href="Templates/AngularAccelerationTrace_Template.csv" download>AngularAccelerationTrace_Template.csv</a></li>
             <li>Peak acceleration and peak velocity only (<b>PeakValues</b>, one row per file): <a href="Templates/PeakValues_Template.csv" download>PeakValues_Template.csv</a></li>
           </ul>
-          Save each simulation under its own name (for example <code>SIM_001.csv</code>); files with <code>template</code> in the name are skipped.</li>
-        <li>Open the <b>Batch</b> page and choose the <b>Input Type</b>, <b>Impact Direction</b> and <b>Model Architecture</b> that apply to every file.</li>
-        <li>Drop the CSV files on the drop zone or pick several at once.</li>
-        <li>Press <b>Run batch</b> and watch the progress bar. A table of results appears at the end.</li>
-        <li>Press <b>Download batch results (.zip)</b>.</li>
+          Save each simulation under its own name (for example <code>SIM_001.csv</code>); files with <code>template</code> in the name are skipped in batch mode.</li>
+        <li>On <b>Input Parameters</b>, choose the input type, select all the files (or drag and drop them), and choose the impact direction and model.</li>
+        <li>Press <b>Batch mode: Off</b> to switch it on (the button turns purple and Run becomes <b>Run Batch</b>).</li>
+        <li>Press <b>Run Batch</b> and choose the output folder when your browser asks. Browsers that cannot save to a folder download one .zip instead. If the browser refuses a folder such as Documents or Downloads, pick or create a sub-folder.</li>
+        <li>Watch the table fill in. When it finishes, press <b>Output Folder</b> under the table to open your browser's file window inside the folder.</li>
       </ol>
       <h4>Batch input rules</h4>
       <ul>
         <li><b>Do not mix input types.</b> If you need velocity traces and peak values, run two batches.</li>
-        <li><b>The file name becomes the Simulation ID</b>: <code>SIM_001.csv</code> → <code>SIM_001</code>.</li>
+        <li><b>The file name becomes the Simulation ID</b>: <code>SIM_001.csv</code> → <code>SIM_001</code>. Every ID must be unique.</li>
         <li><b>Template files are skipped</b>: any file with <code>template</code> in its name.</li>
-        <li><b>PeakValues</b> files must contain exactly one input row each.</li>
-        <li>If one simulation fails, the batch continues with the next file. The failed row is marked <code>Failed</code> and the reason is in <code>ErrorMessage</code>.</li>
+        <li><b>PeakValues</b> files must contain exactly one input row each (typed traces added with <b>Add trace</b> also work).</li>
+        <li>If one simulation fails, the batch continues with the next file. The failed row is marked <b>Failed</b> and the reason is in the Message column.</li>
       </ul>
 
       <h3 id="ins-results">Expected results</h3>
-      <h4>Regular mode (one simulation)</h4>
-      <p>The <b>Run / Results</b> page shows:</p>
+      <h4>Regular mode (one or several simulations)</h4>
+      <p>The <b>Run / Results</b> page shows, for the open tab:</p>
       <ul>
         <li>the <b>overall prediction</b>: MPS95 (threshold 0.30) and MAS95 (threshold 0.13), each flagged when <code>value ≥ threshold</code>; the result is an injury-level response if either is flagged;</li>
         <li>the position of this run in the training-data distribution, with a warning when the input is outside the training range;</li>
         <li>the <b>spatial MPS</b> (each of the 13,196 brain elements) and <b>spatial MAS</b> (each of the 73,425 axonal fibre beams) in two linked 3D views, with cut planes (when Visual is ON).</li>
       </ul>
-      <p><b>Download results (.zip)</b> contains a folder named after the Simulation ID with:</p>
+      <p><b>Download</b> gives a .zip with a folder per simulation, named after its Simulation ID, containing:</p>
 <pre>&lt;SimulationID&gt;_OverallPredictions.csv
 &lt;SimulationID&gt;_SpatialMPS.csv
 &lt;SimulationID&gt;_SpatialMAS.csv
 &lt;SimulationID&gt;_VelocityTrace.csv
+&lt;SimulationID&gt;_InputSettings.json
 &lt;SimulationID&gt;_SpatialMPSPreview.png     (Visual ON)
 &lt;SimulationID&gt;_SpatialMASPreview.png     (Visual ON)
 &lt;SimulationID&gt;_RunResultsPage.png        (Visual ON)</pre>
+      <p><code>_OverallPredictions.csv</code> holds the peak angular velocity and acceleration, MPS95, MAS95, both thresholds and both injury flags. <b>Report</b> gives an .html report: for one tab, its settings, prediction, verdict and results figure; for all tabs, a summary table followed by one section per simulation.</p>
       <h4>Batch mode</h4>
-      <p>The batch page lists one row per input file (status, MPS95, MAS95 and flags). The downloaded <b>.zip</b> contains:</p>
+      <p>The Run / Results page shows a table with one row per simulation:</p>
+<pre>SimulationID | Peak Angular Velocity (rad/s) | Peak Angular Acceleration (rad/s2) |
+Status (Injured / Not Injured / Failed) | MPS95 | MAS95 | MPS95 flag | MAS95 flag | Message</pre>
+      <p>The output folder (or .zip) contains:</p>
 <pre>_BatchSummaries/BatchSummary_&lt;date_time&gt;.csv
 batch_log.txt
 &lt;SimulationID&gt;/&lt;SimulationID&gt;_OverallPredictions.csv
-&lt;SimulationID&gt;/&lt;SimulationID&gt;_SpatialMPS.csv   (if spatial CSVs are included)
-&lt;SimulationID&gt;/&lt;SimulationID&gt;_SpatialMAS.csv   (if spatial CSVs are included)</pre>
-      <p>Batch mode does not draw 3D views or export screenshots. The batch summary has one row per input file and is the first file to check. Its columns are:</p>
+&lt;SimulationID&gt;/&lt;SimulationID&gt;_SpatialMPS.csv
+&lt;SimulationID&gt;/&lt;SimulationID&gt;_SpatialMAS.csv</pre>
+      <p>The batch summary has one row per input file and is the first file to check. Its columns are:</p>
 <pre>SimulationID, InputFile, Status, ErrorMessage, MPS95, MAS95,
 MPS95_InjuryFlag, MAS95_InjuryFlag, OutputFolder, OverallCSV,
 SpatialMPS_CSV, SpatialMAS_CSV</pre>
       <h4>Injury threshold rule</h4>
 <pre>MPS95_InjuryFlag = MPS95 ≥ 0.30
 MAS95_InjuryFlag = MAS95 ≥ 0.13</pre>
-      <p>A value below the threshold is below threshold; a value equal to or above it sets the injury flag to true.</p>
+      <p>A value below the threshold is below threshold; a value equal to or above it sets the injury flag to true. A simulation is <b>Injured</b> when either flag is set.</p>
     </div>
   </section>
 
@@ -413,7 +382,7 @@ MAS95_InjuryFlag = MAS95 ≥ 0.13</pre>
         <li><b>Spatial MAS</b>: strain for each of the 73,425 axonal fibre beams</li>
       </ul>
       <p>An output is flagged when <code>value ≥ threshold</code>. The result is flagged as an injury-level response if either MPS95 or MAS95 is flagged.</p>
-      <p>Input formats, units and how to run single and batch predictions are described on the <button class="link" data-goto="instructions">Instructions</button> page.</p>
+      <p>Input formats, units and how to run single, multiple and batch predictions are described on the <button class="link" data-goto="instructions">Instructions</button> page.</p>
       <div class="refs">
       <h3>Scientific references</h3>
       <h4>Overall MPS95 and MAS95</h4>
