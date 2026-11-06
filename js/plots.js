@@ -189,11 +189,13 @@ export function drawOverall(ctx, r, overall) {
   const total = rows.length * rowH + 4;
   let y = r.y + Math.max(10, (r.h - total) / 2);
   const P = pal(), RED = P.red, GREEN = P.green, INK = P.ink, MUTED = P.muted;
-  const X = (v) => left + width * Math.min(1, Math.max(0, v));
   const pill = (x, yy, w, h, rad) => { ctx.beginPath(); ctx.roundRect(x, yy, w, h, rad); };
   ctx.save();
   ctx.textBaseline = "alphabetic";
   for (const [name, sub, value, thr] of rows) {
+    // each axis ends at a different value so that both thresholds sit at the same x position
+    const axMax = (thr / rows[0][3]) * 1, ticks = name === rows[0][0] ? [0, 0.2, 0.4, 0.6, 0.8, 1] : [0, 0.1, 0.2, 0.3, 0.4];
+    const X = (v) => left + width * Math.min(1, Math.max(0, v / axMax));
     const flagged = value >= thr, col = flagged ? RED : GREEN;
     // title row: name + description on the left, predicted value on the right
     ctx.textAlign = "left"; ctx.fillStyle = INK; ctx.font = "700 15px system-ui, sans-serif";
@@ -218,8 +220,8 @@ export function drawOverall(ctx, r, overall) {
     ctx.fillText(label, Math.min(Math.max(left, X(thr) - lw / 2), left + width - lw), by - 9);
     // axis ticks
     ctx.font = "11px system-ui, sans-serif"; ctx.fillStyle = MUTED;
-    for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
-      ctx.textAlign = t === 0 ? "left" : t === 1 ? "right" : "center";
+    for (const t of ticks) {
+      ctx.textAlign = t === 0 ? "left" : t === axMax ? "right" : "center";
       ctx.fillText(String(t), X(t), by + barH + 20);
     }
     // message for this metric: how far the value is from its own threshold
