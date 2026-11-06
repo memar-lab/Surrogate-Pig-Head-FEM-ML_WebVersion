@@ -345,9 +345,10 @@ progress { width: 100%; height: 10px; margin-top: 0.8rem; accent-color: var(--ac
 }
 .splash-group { display: flex; align-items: center; }
 .splash-logo {
-  width: clamp(110px, 24vmin, 210px); aspect-ratio: 758 / 911; flex: none;
-  background: url("../assets/logo-crystal.svg") center / contain no-repeat; /* full-colour 3D crystal logo */
-  filter: drop-shadow(0 0 22px rgba(80, 160, 255, .45));
+  width: clamp(110px, 24vmin, 210px); aspect-ratio: 735 / 889; flex: none;
+  background: linear-gradient(155deg, #f2f4f7 10%, #d0d2d4 50%, #8fb4e4 100%);
+  -webkit-mask: url("../assets/logo.svg") center / contain no-repeat; mask: url("../assets/logo.svg") center / contain no-repeat;
+  filter: drop-shadow(0 0 18px rgba(80, 160, 255, .45));
   animation: splash-logo 1s cubic-bezier(.2, .8, .2, 1) both;
 }
 .splash-word {
