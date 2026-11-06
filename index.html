@@ -135,15 +135,7 @@
                 <option disabled>Multi-Direction (future)</option>
               </select>
             </label>
-            <label class="field">Pre-trained Model
-              <select id="model">
-                <option>DNN</option>
-                <option>Lasso</option>
-                <option>Ridge</option>
-                <option value="Random Forest - Linear">Random Forest - CART</option>
-                <option>Random Forest - Curvature</option>
-              </select>
-            </label>
+            <input type="hidden" id="model" value="DNN"><!-- the platform always uses the DNN model -->
             <label class="field">Visual
               <select id="visual">
                 <option value="ON">ON</option>
@@ -282,7 +274,7 @@
       <ul>
         <li><b>Simulation ID</b>: a name for the run, shown below the Impact Profile choices. For a trace file it defaults to the file name (without <code>.csv</code>); for peak values it defaults to <code>SIM_001</code>. You can edit it at any time. It labels the results and the downloaded files.</li>
         <li><b>Impact Direction</b>: <b>Axial</b>, <b>Sagittal</b> or <b>Coronal</b>. The picture beside it shows the rotation on the pig brain. Multi-Direction is reserved for future development; current models are not trained for it.</li>
-        <li><b>Pre-trained Model</b>: DNN, Lasso, Ridge, Random Forest - CART or Random Forest - Curvature.</li>
+        <li><b>Model</b>: predictions always use the pre-trained deep neural network (DNN) surrogate; there is nothing to choose.</li>
         <li><b>Visual</b>: ON draws the 3D spatial MPS and MAS views; OFF skips them (the spatial values stay in the downloadable CSV files).</li>
       </ul>
 
@@ -290,7 +282,7 @@
       <ol>
         <li>On <b>Species</b>, keep <b>Pig</b> selected (the only species available now) and continue.</li>
         <li>On <b>Input Parameters</b>, choose the input type under <b>Impact Profile</b> and load a file or enter the peak values. The velocity trace preview appears automatically.</li>
-        <li>Check the <b>Simulation ID</b> below it, then choose the impact direction, the model and the visual option.</li>
+        <li>Check the <b>Simulation ID</b> below it, then choose the impact direction and the visual option.</li>
         <li><b>Several simulations at once:</b>
           <ul>
             <li>Select several files in the file picker, or drag and drop them onto the Impact Profile box (up to 20 in regular mode). Each file becomes its own simulation, with an editable Simulation ID in the list that appears. The <b>×</b> button next to a file removes it from the run.</li>
@@ -313,7 +305,7 @@
             <li>Peak acceleration and peak velocity only (<b>PeakValues</b>, one row per file): <a href="Templates/PeakValues_Template.csv" download>PeakValues_Template.csv</a></li>
           </ul>
           Save each simulation under its own name (for example <code>SIM_001.csv</code>); files with <code>template</code> in the name are skipped in batch mode.</li>
-        <li>On <b>Input Parameters</b>, choose the input type, select all the files (or drag and drop them), and choose the impact direction and model.</li>
+        <li>On <b>Input Parameters</b>, choose the input type, select all the files (or drag and drop them), and choose the impact direction.</li>
         <li>Press <b>Batch mode: Off</b> to switch it on (the button turns purple and Run becomes <b>Run Batch</b>).</li>
         <li>Press <b>Run Batch</b> and choose the output folder when your browser asks. Browsers that cannot save to a folder download one .zip instead. If the browser refuses a folder such as Documents or Downloads, pick or create a sub-folder.</li>
         <li>Watch the table fill in. When it finishes, press <b>Output Folder</b> under the table to open your browser's file window inside the folder.</li>

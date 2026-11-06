@@ -27,7 +27,7 @@ An output is flagged when `value >= threshold`. The result is reported as an inj
    - **Angular Velocity Trace**: upload a CSV with `time_(s)` and `Angular_velocity_(rad/s)`.
    - **Angular Acceleration Trace**: upload a CSV with `time_(s)` and `Angular_Acceleration_(rad/s2)`.
    - **Peak Values**: type the peak angular acceleration (rad/s²) and peak angular velocity (rad/s), or upload a one-row CSV with `Peak_Acceleration_(rad/s2)` and `Peak_Velocity_(rad/s)`.
-4. Choose the **Impact Direction** (Axial, Sagittal or Coronal) and the **Pre-trained Model** (DNN, Lasso, Ridge, Random Forest - CART, Random Forest - Curvature).
+4. Choose the **Impact Direction** (Axial, Sagittal or Coronal) and the **Visual** option. Predictions always use the pre-trained DNN model.
 5. Set **Visual** to ON to see the 3D spatial views, or OFF to skip them.
 6. The angular velocity trace preview appears automatically once the input is loaded or entered.
 7. Click **Run Prediction**.
@@ -40,7 +40,7 @@ Select several files (up to 20), or drag and drop them onto the Impact Profile b
 
 ### Batch mode
 
-1. On **Input Parameters**, choose the input type, impact direction and model, and select all the CSV files (or drag and drop them). All files in one batch must share these settings.
+1. On **Input Parameters**, choose the input type and impact direction, and select all the CSV files (or drag and drop them). All files in one batch must share these settings.
 2. Press **Batch mode: Off** to turn batch mode on (the button changes colour). Optionally untick **Include spatial MPS / MAS CSVs** for a faster, summary-only run.
 3. Click **Run Batch** and choose an output folder. Results are written there directly; the page shows a table with the peak angular velocity and acceleration, status (Injured / Not Injured), MPS95, MAS95, the flags and a message. **Output Folder** opens your browser's file window inside the folder. Browsers that cannot save to a folder download one .zip instead.
 
