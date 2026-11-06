@@ -1,6 +1,7 @@
 // Downloadable report: a self-contained .html page for one simulation, or one page covering several simulations.
 
 import { modelLabel } from "./models.js";
+import { thresholdMessages } from "./plots.js";
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (v, d = 4) => Number(v).toFixed(d);
@@ -20,7 +21,10 @@ export function reportRows({ res, cfg }, thresholds) {
       ["MPS95", fmt(o.MPS95), thresholds.MPS95.toFixed(2), o.MPS95_InjuryFlag],
       ["MAS95", fmt(o.MAS95), thresholds.MAS95.toFixed(2), o.MAS95_InjuryFlag],
     ],
-    verdict: o.MPS95_InjuryFlag || o.MAS95_InjuryFlag ? "Injury threshold exceeded: predicted injury-level response" : "No injury threshold exceeded",
+    messages: [
+      [o.MPS95_InjuryFlag, thresholdMessages("MPS95", o.MPS95, thresholds.MPS95)[0]],
+      [o.MAS95_InjuryFlag, thresholdMessages("MAS95", o.MAS95, thresholds.MAS95)[0]],
+    ],
   };
 }
 
@@ -44,14 +48,13 @@ const FOOTER = `<footer>Created with the Memar Lab Brain Injury Biomechanics Pla
 
 /** Settings, prediction table, verdict, optional caution and the results figure of one simulation. */
 function simulationHTML(info, thresholds, figureDataURL, notes) {
-  const { settings, results, verdict } = reportRows(info, thresholds);
-  const bad = results.some((r) => r[3]);
+  const { settings, results, messages } = reportRows(info, thresholds);
   return `<h2>Input settings</h2>
 <table>${settings.map(([k, v]) => `<tr><th style="width:30%">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>
 <h2>Overall prediction</h2>
 <table><tr><th>Metric</th><th>Predicted</th><th>Threshold</th><th>Result</th></tr>
 ${results.map(([k, v, t, f]) => `<tr><td>${k}</td><td class="n">${v}</td><td class="n">${t}</td><td class="${f ? "flag" : "ok"}">${f ? "Exceeded" : "Below"}</td></tr>`).join("")}</table>
-<div class="verdict ${bad ? "bad" : "good"}">${esc(verdict)}</div>
+${messages.map(([f, m]) => `<div class="verdict ${f ? "bad" : "good"}">${esc(m)}</div>`).join("\n")}
 ${notes ? `<div class="note">${esc(notes)}</div>` : ""}
 <h2>Results</h2>
 <img src="${figureDataURL}" alt="Dataset distribution, overall prediction, spatial MPS and spatial MAS">`;

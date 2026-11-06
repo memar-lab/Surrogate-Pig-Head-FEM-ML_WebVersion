@@ -183,8 +183,8 @@ export function drawOverall(ctx, r, overall) {
     ["MPS95", "Max. principal strain", overall.MPS95, MPS95_THRESHOLD],
     ["MAS95", "Max. axonal strain", overall.MAS95, MAS95_THRESHOLD],
   ];
-  const left = r.x + 20, width = r.w - 40, barH = 26, rowH = 104, bannerH = 38;
-  const total = rows.length * rowH + bannerH + 4;
+  const left = r.x + 20, width = r.w - 40, barH = 26, rowH = 126, bannerH = 30;
+  const total = rows.length * rowH + 4;
   let y = r.y + Math.max(10, (r.h - total) / 2);
   const P = pal(), RED = P.red, GREEN = P.green, INK = P.ink, MUTED = P.muted;
   const X = (v) => left + width * Math.min(1, Math.max(0, v));
@@ -220,20 +220,31 @@ export function drawOverall(ctx, r, overall) {
       ctx.textAlign = t === 0 ? "left" : t === 1 ? "right" : "center";
       ctx.fillText(String(t), X(t), by + barH + 20);
     }
+    // message for this metric: how far the value is from its own threshold
+    const my = by + barH + 32;
+    ctx.fillStyle = flagged ? P.badBg : P.okBg;
+    pill(left, my, width, bannerH, 10); ctx.fill();
+    ctx.fillStyle = flagged ? P.badInk : P.okInk; ctx.font = "700 13px system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const wording = thresholdMessages(name, value, thr);
+    const text = wording.find((t) => ctx.measureText(t).width <= width - 16) || wording[wording.length - 1];
+    ctx.fillText(text, left + width / 2, my + bannerH / 2);
+    ctx.textBaseline = "alphabetic";
     y += rowH;
   }
-  const flagged = overall.MPS95_InjuryFlag || overall.MAS95_InjuryFlag;
-  ctx.fillStyle = flagged ? P.badBg : P.okBg;
-  pill(left, y, width, bannerH, 10); ctx.fill();
-  ctx.fillStyle = flagged ? P.badInk : P.okInk; ctx.font = "700 13px system-ui, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  // use the longest wording that fits the banner (phones are narrow)
-  const wording = flagged
-    ? ["Injury threshold exceeded: predicted injury-level response", "Injury threshold exceeded", "Threshold exceeded"]
-    : ["No injury threshold exceeded", "Below injury thresholds"];
-  const text = wording.find((t) => ctx.measureText(t).width <= width - 16) || wording[wording.length - 1];
-  ctx.fillText(text, left + width / 2, y + bannerH / 2);
   ctx.restore();
+}
+
+/** Wordings (longest first) for how far a value is above or below its injury threshold, as a percentage of the threshold. */
+export function thresholdMessages(name, value, thr) {
+  const pct = (Math.abs(value - thr) / thr) * 100;
+  const p = pct.toFixed(1);
+  if (value >= thr) {
+    return pct < 0.05
+      ? [`${name} is at the injury threshold`, `At injury threshold`]
+      : [`${name} is ${p}% above the injury threshold`, `${p}% above injury threshold`, `${p}% above threshold`];
+  }
+  return [`${name} is ${p}% below the injury threshold`, `${p}% below injury threshold`, `${p}% below threshold`];
 }
 
 /** Colour bar for a spatial view, drawn vertically at rect r. */
