@@ -22,8 +22,8 @@ export function reportRows({ res, cfg }, thresholds) {
       ["MAS95", fmt(o.MAS95), thresholds.MAS95.toFixed(2), o.MAS95_InjuryFlag],
     ],
     messages: [
-      [o.MPS95_InjuryFlag, thresholdMessages("MPS95", o.MPS95, thresholds.MPS95)[0]],
-      [o.MAS95_InjuryFlag, thresholdMessages("MAS95", o.MAS95, thresholds.MAS95)[0]],
+      [o.MPS95_InjuryFlag, "MPS95: " + thresholdMessages(o.MPS95, thresholds.MPS95)[0]],
+      [o.MAS95_InjuryFlag, "MAS95: " + thresholdMessages(o.MAS95, thresholds.MAS95)[0]],
     ],
   };
 }

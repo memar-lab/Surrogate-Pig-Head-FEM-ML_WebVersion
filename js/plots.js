@@ -183,7 +183,7 @@ export function drawOverall(ctx, r, overall) {
     ["MPS95", "Max. principal strain", overall.MPS95, MPS95_THRESHOLD],
     ["MAS95", "Max. axonal strain", overall.MAS95, MAS95_THRESHOLD],
   ];
-  const left = r.x + 20, width = r.w - 40, barH = 26, rowH = 126, bannerH = 30;
+  const left = r.x + 20, width = r.w - 40, barH = 28, rowH = 158, bannerH = 34;
   const total = rows.length * rowH + 4;
   let y = r.y + Math.max(10, (r.h - total) / 2);
   const P = pal(), RED = P.red, GREEN = P.green, INK = P.ink, MUTED = P.muted;
@@ -200,9 +200,9 @@ export function drawOverall(ctx, r, overall) {
     ctx.fillStyle = MUTED; ctx.font = "12px system-ui, sans-serif";
     ctx.fillText(sub, left + nameW + 10, y + 14);
     ctx.textAlign = "right"; ctx.fillStyle = col; ctx.font = "700 22px system-ui, sans-serif";
-    ctx.fillText(value.toFixed(4), left + width, y + 18);
+    ctx.fillText(value.toFixed(4), left + width, y + 20);
     // bar
-    const by = y + 38;
+    const by = y + 48;
     ctx.fillStyle = P.track; pill(left, by, width, barH, barH / 2); ctx.fill();
     const fw = Math.max(barH, X(value) - left);
     if (value > 0) { ctx.fillStyle = col; pill(left, by, Math.min(fw, width), barH, barH / 2); ctx.fill(); }
@@ -212,15 +212,15 @@ export function drawOverall(ctx, r, overall) {
     ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = P.marker;
     const label = `Threshold ${thr.toFixed(2)}`;
     const labelW = ctx.measureText(label).width;
-    ctx.font = "600 8px system-ui, sans-serif";
-    const supW = ctx.measureText("1,2").width + 1; // superscript: see references 1 and 2 (About page)
+    ctx.font = "600 9px system-ui, sans-serif";
+    const supW = ctx.measureText("1,2").width + 2; // superscript: see references 1 and 2 (About page)
     const lw = labelW + supW;
     ctx.textAlign = "left";
     const lx = Math.min(Math.max(left, X(thr) - lw / 2), left + width - lw);
     ctx.font = "600 11px system-ui, sans-serif";
     ctx.fillText(label, lx, by - 9);
-    ctx.font = "600 8px system-ui, sans-serif";
-    ctx.fillText("1,2", lx + labelW + 1, by - 15);
+    ctx.font = "600 9px system-ui, sans-serif";
+    ctx.fillText("1,2", lx + labelW + 2, by - 15);
     // axis ticks
     ctx.font = "11px system-ui, sans-serif"; ctx.fillStyle = MUTED;
     for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
@@ -228,30 +228,34 @@ export function drawOverall(ctx, r, overall) {
       ctx.fillText(String(t), X(t), by + barH + 20);
     }
     // message for this metric: how far the value is from its own threshold
-    const my = by + barH + 32;
+    const my = by + barH + 40;
     ctx.fillStyle = flagged ? P.badBg : P.okBg;
     pill(left, my, width, bannerH, 10); ctx.fill();
     ctx.fillStyle = flagged ? P.badInk : P.okInk; ctx.font = "700 13px system-ui, sans-serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const wording = thresholdMessages(name, value, thr);
+    const wording = thresholdMessages(value, thr);
     const text = wording.find((t) => ctx.measureText(t).width <= width - 16) || wording[wording.length - 1];
     ctx.fillText(text, left + width / 2, my + bannerH / 2);
     ctx.textBaseline = "alphabetic";
+    if (name === rows[0][0]) { // thin divider between the two metrics
+      ctx.strokeStyle = P.track; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(left, my + bannerH + 16); ctx.lineTo(left + width, my + bannerH + 16); ctx.stroke();
+    }
     y += rowH;
   }
   ctx.restore();
 }
 
 /** Wordings (longest first) for how far a value is above or below its injury threshold, as a percentage of the threshold. */
-export function thresholdMessages(name, value, thr) {
+export function thresholdMessages(value, thr) {
   const pct = (Math.abs(value - thr) / thr) * 100;
   const p = pct.toFixed(1);
   if (value >= thr) {
     return pct < 0.05
-      ? [`${name} is at the injury threshold`, `At injury threshold`]
-      : [`${name} is ${p}% above the injury threshold`, `${p}% above injury threshold`, `${p}% above threshold`];
+      ? ["At the injury threshold", "At injury threshold"]
+      : [`${p}% above the injury threshold`, `${p}% above injury threshold`, `${p}% above threshold`];
   }
-  return [`${name} is ${p}% below the injury threshold`, `${p}% below injury threshold`, `${p}% below threshold`];
+  return [`${p}% below the injury threshold`, `${p}% below injury threshold`, `${p}% below threshold`];
 }
 
 /** Colour bar for a spatial view, drawn vertically at rect r. */
