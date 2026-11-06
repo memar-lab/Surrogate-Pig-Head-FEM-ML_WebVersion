@@ -177,6 +177,8 @@ export function drawDataset(ctx, r, dataset, user) {
   ctx.restore();
 }
 
+const SUP_W = 22; // room for the superscript after a threshold message
+
 /** MPS95 / MAS95 against their thresholds on a fixed 0-1 axis, plus an overall verdict. */
 export function drawOverall(ctx, r, overall) {
   const rows = [
@@ -211,16 +213,9 @@ export function drawOverall(ctx, r, overall) {
     ctx.beginPath(); ctx.moveTo(X(thr), by - 5); ctx.lineTo(X(thr), by + barH + 5); ctx.stroke();
     ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = P.marker;
     const label = `Threshold ${thr.toFixed(2)}`;
-    const labelW = ctx.measureText(label).width;
-    ctx.font = "600 9px system-ui, sans-serif";
-    const supW = ctx.measureText("1,2").width + 2; // superscript: see references 1 and 2 (About page)
-    const lw = labelW + supW;
+    const lw = ctx.measureText(label).width;
     ctx.textAlign = "left";
-    const lx = Math.min(Math.max(left, X(thr) - lw / 2), left + width - lw);
-    ctx.font = "600 11px system-ui, sans-serif";
-    ctx.fillText(label, lx, by - 9);
-    ctx.font = "600 9px system-ui, sans-serif";
-    ctx.fillText("1,2", lx + labelW + 2, by - 15);
+    ctx.fillText(label, Math.min(Math.max(left, X(thr) - lw / 2), left + width - lw), by - 9);
     // axis ticks
     ctx.font = "11px system-ui, sans-serif"; ctx.fillStyle = MUTED;
     for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
@@ -234,8 +229,13 @@ export function drawOverall(ctx, r, overall) {
     ctx.fillStyle = flagged ? P.badInk : P.okInk; ctx.font = "700 13px system-ui, sans-serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     const wording = thresholdMessages(value, thr);
-    const text = wording.find((t) => ctx.measureText(t).width <= width - 16) || wording[wording.length - 1];
-    ctx.fillText(text, left + width / 2, my + bannerH / 2);
+    const text = wording.find((t) => ctx.measureText(t).width + SUP_W <= width - 16) || wording[wording.length - 1];
+    // the superscript "1,2" (references 1 and 2 on the About page) ends the sentence
+    const tw = ctx.measureText(text).width;
+    ctx.textAlign = "left";
+    ctx.fillText(text, left + (width - tw - SUP_W) / 2, my + bannerH / 2);
+    ctx.font = "700 10px system-ui, sans-serif";
+    ctx.fillText("1,2", left + (width - tw - SUP_W) / 2 + tw + 2, my + bannerH / 2 - 6);
     ctx.textBaseline = "alphabetic";
     if (name === rows[0][0]) { // thin divider between the two metrics
       ctx.strokeStyle = P.track; ctx.lineWidth = 1;

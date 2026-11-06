@@ -54,7 +54,7 @@ function simulationHTML(info, thresholds, figureDataURL, notes) {
 <h2>Overall prediction</h2>
 <table><tr><th>Metric</th><th>Predicted</th><th>Threshold<sup>1,2</sup></th><th>Result</th></tr>
 ${results.map(([k, v, t, f]) => `<tr><td>${k}</td><td class="n">${v}</td><td class="n">${t}</td><td class="${f ? "flag" : "ok"}">${f ? "Exceeded" : "Below"}</td></tr>`).join("")}</table>
-${messages.map(([f, m]) => `<div class="verdict ${f ? "bad" : "good"}">${esc(m)}</div>`).join("\n")}
+${messages.map(([f, m]) => `<div class="verdict ${f ? "bad" : "good"}">${esc(m)}<sup>1,2</sup></div>`).join("\n")}
 ${notes ? `<div class="note">${esc(notes)}</div>` : ""}
 <h2>Results</h2>
 <img src="${figureDataURL}" alt="Dataset distribution, overall prediction, spatial MPS and spatial MAS">`;
