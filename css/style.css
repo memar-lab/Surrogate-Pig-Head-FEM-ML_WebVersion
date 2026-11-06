@@ -437,3 +437,7 @@ dialog.dlg h3 { margin-top: 0; }
 
 /* ---- drag and drop onto the Impact Profile box ---- */
 fieldset.over { outline: 2px dashed var(--accent); outline-offset: 2px; background: var(--chip-bg); }
+
+/* ---- reference superscripts that link to the About page ---- */
+a.supref { text-decoration: none; }
+a.supref:hover sup { text-decoration: underline; }

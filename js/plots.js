@@ -189,6 +189,7 @@ export function drawOverall(ctx, r, overall) {
   const total = rows.length * rowH + 4;
   let y = r.y + Math.max(10, (r.h - total) / 2);
   const P = pal(), RED = P.red, GREEN = P.green, INK = P.ink, MUTED = P.muted;
+  ctx.canvas.supHits = []; // clickable rectangles of the reference superscripts (CSS px), used by the page
   const pill = (x, yy, w, h, rad) => { ctx.beginPath(); ctx.roundRect(x, yy, w, h, rad); };
   ctx.save();
   ctx.textBaseline = "alphabetic";
@@ -237,7 +238,10 @@ export function drawOverall(ctx, r, overall) {
     ctx.textAlign = "left";
     ctx.fillText(text, left + (width - tw - SUP_W) / 2, my + bannerH / 2);
     ctx.font = "700 10px system-ui, sans-serif";
-    ctx.fillText("1,2", left + (width - tw - SUP_W) / 2 + tw + 2, my + bannerH / 2 - 6);
+    const sx = left + (width - tw - SUP_W) / 2 + tw + 2, sy = my + bannerH / 2 - 6, sw = ctx.measureText("1,2").width;
+    ctx.fillText("1,2", sx, sy);
+    ctx.fillRect(sx, sy + 2, sw, 1); // underline: it is a link to the references
+    ctx.canvas.supHits.push({ x: sx - 6, y: my, w: sw + 12, h: bannerH });
     ctx.textBaseline = "alphabetic";
     if (name === rows[0][0]) { // thin divider between the two metrics
       ctx.strokeStyle = P.track; ctx.lineWidth = 1;

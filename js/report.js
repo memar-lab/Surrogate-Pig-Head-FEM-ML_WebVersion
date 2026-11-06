@@ -4,6 +4,8 @@ import { modelLabel } from "./models.js";
 import { thresholdMessages } from "./plots.js";
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/** Link to the references on the About page of the platform this report was made on. */
+const refsUrl = () => `${location.href.split("#")[0]}#references`;
 const fmt = (v, d = 4) => Number(v).toFixed(d);
 
 /** Settings / results shown at the top of the report, as [label, value] rows. */
@@ -44,7 +46,7 @@ const STYLE = `
   table.sum td,table.sum th{text-align:center} table.sum td:first-child,table.sum th:first-child{text-align:left}
   footer{margin-top:2rem;color:#5d6b7e;font-size:.8rem}
   @media print{body{margin:0}h2{break-after:avoid}img{break-inside:avoid}section.sim{break-before:page}}`;
-const FOOTER = `<footer><sup>1,2</sup> Thresholds (MPS95 0.30, MAS95 0.13): Hajiaghamemar et al., 2020, Biomech Model Mechanobiol 19(3):1109-1130; Wu et al., 2021, J Neurotrauma 38(13):1879-1888. See the About page for full references.<br>Created with the Memar Lab Brain Injury Biomechanics Platform. MPS95 and MAS95 are the 95th percentile maximum principal strain and maximum axonal strain.</footer>`;
+const FOOTER = `<footer><a href="${refsUrl()}" target="_blank" rel="noopener"><sup>1,2</sup></a> Thresholds (MPS95 0.30, MAS95 0.13): Hajiaghamemar et al., 2020, Biomech Model Mechanobiol 19(3):1109-1130; Wu et al., 2021, J Neurotrauma 38(13):1879-1888. See the About page for full references.<br>Created with the Memar Lab Brain Injury Biomechanics Platform. MPS95 and MAS95 are the 95th percentile maximum principal strain and maximum axonal strain.</footer>`;
 
 /** Settings, prediction table, verdict, optional caution and the results figure of one simulation. */
 function simulationHTML(info, thresholds, figureDataURL, notes) {
@@ -52,9 +54,9 @@ function simulationHTML(info, thresholds, figureDataURL, notes) {
   return `<h2>Input settings</h2>
 <table>${settings.map(([k, v]) => `<tr><th style="width:30%">${esc(k)}</th><td>${esc(v)}</td></tr>`).join("")}</table>
 <h2>Overall prediction</h2>
-<table><tr><th>Metric</th><th>Predicted</th><th>Threshold<sup>1,2</sup></th><th>Result</th></tr>
+<table><tr><th>Metric</th><th>Predicted</th><th>Threshold<a href="${refsUrl()}" target="_blank" rel="noopener"><sup>1,2</sup></a></th><th>Result</th></tr>
 ${results.map(([k, v, t, f]) => `<tr><td>${k}</td><td class="n">${v}</td><td class="n">${t}</td><td class="${f ? "flag" : "ok"}">${f ? "Exceeded" : "Below"}</td></tr>`).join("")}</table>
-${messages.map(([f, m]) => `<div class="verdict ${f ? "bad" : "good"}">${esc(m)}<sup>1,2</sup></div>`).join("\n")}
+${messages.map(([f, m]) => `<div class="verdict ${f ? "bad" : "good"}">${esc(m)}<a href="${refsUrl()}" target="_blank" rel="noopener"><sup>1,2</sup></a></div>`).join("\n")}
 ${notes ? `<div class="note">${esc(notes)}</div>` : ""}
 <h2>Results</h2>
 <img src="${figureDataURL}" alt="Dataset distribution, overall prediction, spatial MPS and spatial MAS">`;

@@ -79,6 +79,17 @@ $$(".step").forEach((b) => b.addEventListener("click", () => show(b.dataset.page
 $$("[data-goto]").forEach((b) => b.addEventListener("click", () => show(b.dataset.goto)));
 $("to-input").addEventListener("click", () => show("input"));
 
+// Links to the references: "#references" opens the About page scrolled to them (used in a new tab from the results page).
+const REFS_URL = `${location.href.split("#")[0]}#references`;
+const openRefs = () => window.open(REFS_URL, "_blank", "noopener");
+function applyHash() {
+  if (location.hash !== "#references") return;
+  show("about");
+  requestAnimationFrame(() => document.getElementById("references").scrollIntoView({ block: "start" }));
+}
+window.addEventListener("hashchange", applyHash);
+window.addEventListener("load", applyHash);
+
 // ---------------------------------------------------------------- input form
 const MAX_FILES = 20; // regular mode; batch mode has no limit
 const loaded = { VelocityTrace: [], AccelerationTrace: [], PeakValues: [] }; // [{name, text, id}]
@@ -698,6 +709,16 @@ function selectRun(i) {
 }
 
 // ---------------------------------------------------------------- results page
+/** The superscript after each threshold message links to the references, in a new tab. */
+{
+  const cv = $("overall-canvas");
+  const hit = (e) => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    return (cv.supHits || []).some((h) => x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h);
+  };
+  cv.addEventListener("mousemove", (e) => { cv.style.cursor = hit(e) ? "pointer" : ""; });
+  cv.addEventListener("click", (e) => { if (hit(e)) openRefs(); });
+}
 function drawRunPlots() {
   const { res, dataset } = state.current;
   const f = res.features.byName;
@@ -705,6 +726,7 @@ function drawRunPlots() {
   drawDataset(p.ctx, { x: 0, y: 0, w: p.w, h: p.h }, dataset, { angVelMax: f.ang_vel_max, angAccMax: f.ang_acc_max });
   c = $("overall-canvas"); p = prepCanvas(c);
   drawOverall(p.ctx, { x: 0, y: 0, w: p.w, h: p.h }, res.overall);
+  c.title = "Click the superscript for the references";
   for (const [kind, range] of [["MPS", MPS_RANGE], ["MAS", MAS_RANGE]]) {
     const bar = $(`bar-${kind.toLowerCase()}`);
     const q = prepCanvas(bar);
