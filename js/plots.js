@@ -211,9 +211,16 @@ export function drawOverall(ctx, r, overall) {
     ctx.beginPath(); ctx.moveTo(X(thr), by - 5); ctx.lineTo(X(thr), by + barH + 5); ctx.stroke();
     ctx.font = "600 11px system-ui, sans-serif"; ctx.fillStyle = P.marker;
     const label = `Threshold ${thr.toFixed(2)}`;
-    const lw = ctx.measureText(label).width;
+    const labelW = ctx.measureText(label).width;
+    ctx.font = "600 8px system-ui, sans-serif";
+    const supW = ctx.measureText("1,2").width + 1; // superscript: see references 1 and 2 (About page)
+    const lw = labelW + supW;
     ctx.textAlign = "left";
-    ctx.fillText(label, Math.min(Math.max(left, X(thr) - lw / 2), left + width - lw), by - 9);
+    const lx = Math.min(Math.max(left, X(thr) - lw / 2), left + width - lw);
+    ctx.font = "600 11px system-ui, sans-serif";
+    ctx.fillText(label, lx, by - 9);
+    ctx.font = "600 8px system-ui, sans-serif";
+    ctx.fillText("1,2", lx + labelW + 1, by - 15);
     // axis ticks
     ctx.font = "11px system-ui, sans-serif"; ctx.fillStyle = MUTED;
     for (const t of [0, 0.2, 0.4, 0.6, 0.8, 1]) {
