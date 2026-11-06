@@ -17,11 +17,10 @@
     })();
   </script>
   <script>
-    // Intro animation only on the first visit in this browser (and not with reduced motion).
+    // Intro animation on every load (not with reduced motion, and not when a link opens straight on the references).
     (function () {
-      var seen = false;
-      try { seen = localStorage.getItem("splashSeen") === "1"; } catch (e) { seen = false; }
-      if (!seen && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) document.documentElement.classList.add("splash-on");
+      var direct = location.hash === "#references";
+      if (!direct && !(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) document.documentElement.classList.add("splash-on");
     })();
   </script>
   <link rel="stylesheet" href="css/style.css">
@@ -42,7 +41,6 @@
     if (!document.documentElement.classList.contains("splash-on")) { el.remove(); return; }
     function done() {
       document.documentElement.classList.remove("splash-on");
-      try { localStorage.setItem("splashSeen", "1"); } catch (e) {}
       el.remove();
     }
     el.addEventListener("animationend", function (e) { if (e.animationName === "splash-out") done(); });
